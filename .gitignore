@@ -17,6 +17,10 @@ platform/android/local.properties
 platform/android/app/src/main/jniLibs/
 
 # macOS / Build outputs
+rustdrop-macos-daemon
+*.zip
+*.apk
+install.sh
 
 # OS generated files
 .DS_Store
