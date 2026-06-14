@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin, x86_64-apple-darwin
+
+      - name: Build macOS daemon (Universal)
+        run: |
+          cargo build --release -p rustdrop-daemon --target aarch64-apple-darwin
+          cargo build --release -p rustdrop-daemon --target x86_64-apple-darwin
+          # Lipo them together for a universal binary
+          lipo -create -output target/release/rustdrop-macos-daemon target/aarch64-apple-darwin/release/rustdrop target/x86_64-apple-darwin/release/rustdrop
+
+      - name: Package macOS Zip
+        run: |
+          cp target/release/rustdrop-macos-daemon ./
+          chmod +x install.sh
+          zip -r RustDrop-macOS-${{ github.ref_name }}.zip rustdrop-macos-daemon install.sh
+          
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release
+          path: RustDrop-macOS-${{ github.ref_name }}.zip
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
+
+      - name: Install cargo-ndk
+        run: cargo install cargo-ndk
+
+      - name: Build Rust JNI Libraries
+        run: |
+          mkdir -p platform/android/app/src/main/jniLibs
+          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ./platform/android/app/src/main/jniLibs build --release -p rustdrop-ffi
+
+      - name: Build Android APK
+        working-directory: platform/android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug assembleRelease
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release
+          path: platform/android/app/build/outputs/apk/release/app-release-unsigned.apk
+
+  publish:
+    needs: [build-macos, build-android]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-release
+          
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-release
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.zip
+            *.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

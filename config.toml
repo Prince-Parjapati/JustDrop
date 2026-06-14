@@ -1,0 +1,47 @@
+# RustDrop Configuration
+
+[general]
+# Human-readable device name (auto-detected if empty)
+device_name = ""
+# Download directory (platform default if empty)
+download_dir = ""
+# Log level: trace, debug, info, warn, error
+log_level = "info"
+
+[network]
+# TCP listen port for incoming transfers
+listen_port = 42420
+# Connection timeout in seconds
+connect_timeout_secs = 10
+# TCP send buffer size in bytes (2 MB)
+send_buffer_size = 2097152
+# TCP receive buffer size in bytes (2 MB)
+recv_buffer_size = 2097152
+# Enable TCP_NODELAY
+tcp_nodelay = true
+
+[transfer]
+# Chunk size in bytes (256 KiB default, auto-scales for large files)
+chunk_size = 262144
+# Large file threshold in bytes (1 GB) — above this, chunk_size doubles
+large_file_threshold = 1073741824
+# Maximum concurrent transfers
+max_concurrent_transfers = 4
+# Pipeline depth: chunks buffered ahead of network send
+pipeline_depth = 8
+
+[security]
+# Always encrypt chunk data (recommended)
+encrypt_data = true
+# Auto-accept transfers from known devices
+auto_accept_known = false
+# Auto-accept all transfers (NOT recommended)
+auto_accept_all = false
+
+[discovery]
+# mDNS service type
+service_type = "_rustdrop._tcp.local."
+# How often to re-announce presence (seconds)
+announce_interval_secs = 60
+# Peer timeout — consider offline after this many seconds without announcement
+peer_timeout_secs = 180

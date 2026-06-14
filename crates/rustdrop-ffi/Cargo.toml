@@ -1,0 +1,23 @@
+[package]
+name = "rustdrop-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "C ABI and platform bindings for RustDrop"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+rustdrop-core = { path = "../rustdrop-core" }
+rustdrop-protocol = { path = "../rustdrop-protocol" }
+rustdrop-discovery = { path = "../rustdrop-discovery" }
+rustdrop-security = { path = "../rustdrop-security" }
+rustdrop-network = { path = "../rustdrop-network" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+parking_lot = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }

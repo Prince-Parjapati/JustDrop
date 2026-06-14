@@ -1,0 +1,81 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/rustdrop-core",
+    "crates/rustdrop-discovery",
+    "crates/rustdrop-security",
+    "crates/rustdrop-network",
+    "crates/rustdrop-protocol",
+    "crates/rustdrop-storage",
+    "crates/rustdrop-ffi",
+    "crates/rustdrop-daemon",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+rust-version = "1.75"
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["codec"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"
+toml = "0.8"
+
+# Networking
+socket2 = { version = "0.5", features = ["all"] }
+
+# Zero-copy / low-level I/O
+bytes = "1"
+rustix = { version = "0.38", features = ["fs", "net"] }
+
+# mDNS discovery
+mdns-sd = "0.20"
+
+# Noise protocol / security
+snow = "0.10"
+rand = "0.8"
+zeroize = { version = "1", features = ["derive"] }
+
+# Hashing / integrity
+sha2 = "0.10"
+blake2 = "0.10"
+
+# Identity
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Logging / tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# CLI
+clap = { version = "4", features = ["derive"] }
+
+# FFI
+# jni = "0.21"
+
+# Misc
+dirs = "5"
+chrono = { version = "0.4", features = ["serde"] }
+pin-project-lite = "0.2"
+futures = "0.3"
+parking_lot = "0.12"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true
+opt-level = 3
+
+[profile.dev]
+opt-level = 1
