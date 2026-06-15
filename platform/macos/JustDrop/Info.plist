@@ -21,6 +21,12 @@
     <string>11.0</string>
     <key>LSUIElement</key>
     <true/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>JustDrop needs access to your local network to find and share files with nearby devices.</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_justdrop._tcp</string>
+    </array>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>NSPrincipalClass</key>

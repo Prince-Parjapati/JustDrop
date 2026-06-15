@@ -24,12 +24,21 @@ class JustDropService : Service() {
         private const val CHANNEL_NAME = "JustDrop Service"
     }
 
+    private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
+
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Service created")
         JustDropApp.isServiceRunning = true
         createNotificationChannel()
         startForegroundService()
+
+        // Acquire MulticastLock to receive mDNS packets
+        val wifi = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+        multicastLock = wifi.createMulticastLock("JustDropMulticastLock")
+        multicastLock?.setReferenceCounted(true)
+        multicastLock?.acquire()
+
         initRustEngine()
     }
 
@@ -42,6 +51,8 @@ class JustDropService : Service() {
     override fun onDestroy() {
         Log.i(TAG, "Service destroyed, shutting down Rust engine")
         JustDropApp.isServiceRunning = false
+        multicastLock?.release()
+        multicastLock = null
         JustBridge.shutdown()
         super.onDestroy()
     }

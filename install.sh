@@ -53,6 +53,10 @@ echo "  ✓ Auto-start on login configured"
 echo ""
 echo "→ Starting JustDrop..."
 open /Applications/JustDrop.app
+
+# 8. Flush pasteboard cache so the Share menu appears immediately
+/System/Library/CoreServices/pbs -flush 2>/dev/null || true
+
 echo ""
 echo "✅ JustDrop installed successfully!"
 echo ""
