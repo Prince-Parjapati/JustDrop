@@ -64,6 +64,24 @@
             </intent-filter>
         </receiver>
 
+        <!-- Quick Settings Tile (Control Center toggle) -->
+        <service
+            android:name=".RustDropTileService"
+            android:label="RustDrop"
+            android:icon="@android:drawable/ic_menu_share"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <meta-data
+                android:name="android.service.quicksettings.ACTIVE_TILE"
+                android:value="true" />
+            <meta-data
+                android:name="android.service.quicksettings.TOGGLEABLE_TILE"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
     </application>
 
 </manifest>

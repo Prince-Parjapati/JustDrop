@@ -12,6 +12,7 @@ class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
             Log.i("RustDrop", "Boot completed, starting service")
+            RustDropApp.isServiceRunning = true
             val serviceIntent = Intent(context, RustDropService::class.java)
             context.startForegroundService(serviceIntent)
         }

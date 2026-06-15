@@ -27,6 +27,7 @@ class RustDropService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.i(TAG, "Service created")
+        RustDropApp.isServiceRunning = true
         createNotificationChannel()
         startForegroundService()
         initRustEngine()
@@ -40,6 +41,7 @@ class RustDropService : Service() {
 
     override fun onDestroy() {
         Log.i(TAG, "Service destroyed, shutting down Rust engine")
+        RustDropApp.isServiceRunning = false
         RustBridge.shutdown()
         super.onDestroy()
     }

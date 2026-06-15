@@ -1,38 +1,25 @@
 import Cocoa
 
-/// Minimal AppDelegate — RustDrop runs as a background agent (no dock icon).
+/// AppDelegate — RustDrop runs as a menu bar agent (no dock icon).
 ///
-/// On launch, initializes the Rust engine and starts discovery.
-/// The app exits immediately after setup; the daemon process runs separately.
+/// On launch, installs a status bar icon that lets the user toggle
+/// the transfer engine on and off, like AirDrop in Control Center.
 @main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
+    private let statusBarController = StatusBarController()
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide from Dock
+        // Hide from Dock — menu bar only
         NSApp.setActivationPolicy(.accessory)
 
-        // Initialize Rust engine
-        let bridge = RustBridge.shared
-        guard bridge.initialize() else {
-            NSLog("RustDrop: Failed to initialize Rust engine")
-            NSApp.terminate(nil)
-            return
-        }
-
-        guard bridge.startDiscovery() else {
-            NSLog("RustDrop: Failed to start discovery")
-            NSApp.terminate(nil)
-            return
-        }
-
-        if let fp = bridge.getFingerprint() {
-            NSLog("RustDrop: Ready. Fingerprint: \(fp)")
-        }
+        // Install the menu bar toggle
+        statusBarController.setup()
 
         // Install the LaunchAgent if not already installed
         installLaunchAgent()
 
-        NSLog("RustDrop: Background agent running")
+        NSLog("RustDrop: Menu bar agent ready")
     }
 
     func applicationWillTerminate(_ notification: Notification) {
