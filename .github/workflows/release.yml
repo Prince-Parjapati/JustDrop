@@ -80,7 +80,7 @@ jobs:
 
       - name: Rename Android APK
         run: |
-          cp platform/android/app/build/outputs/apk/release/app-release-unsigned.apk JustDrop-Android-${{ github.ref_name }}.apk
+          cp platform/android/app/build/outputs/apk/release/app-release.apk JustDrop-Android-${{ github.ref_name }}.apk
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
