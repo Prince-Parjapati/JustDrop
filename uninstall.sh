@@ -1,43 +1,38 @@
 #!/bin/bash
 # JustDrop Uninstaller for macOS
-# Completely removes JustDrop from your system.
+# Friendly uninstaller that prompts for permissions natively
 
-set -e
-
-echo "=== JustDrop Uninstaller ==="
+echo "🗑️  Uninstalling JustDrop..."
 echo ""
 
 # 1. Quit the app
 echo "→ Quitting JustDrop..."
 osascript -e 'quit app "JustDrop"' 2>/dev/null || true
 killall JustDrop 2>/dev/null || true
-killall justdrop-macos-daemon 2>/dev/null || true
 
 # 2. Stop and remove the LaunchAgent
-echo "→ Removing auto-start..."
+echo "→ Removing auto-start login item..."
 launchctl unload ~/Library/LaunchAgents/com.justdrop.daemon.plist 2>/dev/null || true
 rm -f ~/Library/LaunchAgents/com.justdrop.daemon.plist
 
-# 3. Remove the app bundle
-echo "→ Removing JustDrop.app..."
-rm -rf /Applications/JustDrop.app
+# 3. Remove the app bundle using native prompt if needed
+echo "→ Removing JustDrop.app from /Applications..."
+if rm -rf /Applications/JustDrop.app 2>/dev/null; then
+    echo "  ✓ Removed app successfully."
+else
+    echo "  ℹ️  Requesting permission to delete from /Applications..."
+    osascript -e "do shell script \"rm -rf /Applications/JustDrop.app\" with administrator privileges"
+fi
 
-# 4. Remove old binary install (if present)
-sudo rm -f /usr/local/bin/justdrop-macos-daemon 2>/dev/null || true
-
-# 5. Remove configuration and data
-echo "→ Removing config and keys..."
+# 4. Remove config and data
+echo "→ Cleaning up configuration files..."
 rm -rf ~/Library/Application\ Support/justdrop
 rm -rf ~/Library/Application\ Support/com.justdrop.app
 rm -rf ~/.config/justdrop
-
-# 6. Remove logs
-echo "→ Removing logs..."
-rm -f /tmp/justdrop.log /tmp/justdrop.err
 
 echo ""
 echo "✅ JustDrop has been completely removed from your Mac."
 echo ""
 echo "Note: The ~/JustDrop folder (received files) was NOT deleted."
-echo "      Delete it manually if you no longer need those files:"
-echo "      rm -rf ~/JustDrop"
+echo "You can delete it manually from Finder if you no longer need those files."
+echo ""
