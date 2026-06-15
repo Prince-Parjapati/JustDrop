@@ -1,0 +1,27 @@
+[package]
+name = "justdrop-daemon"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Background daemon for JustDrop file transfer service"
+
+[[bin]]
+name = "justdrop"
+path = "src/main.rs"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+justdrop-protocol = { path = "../justdrop-protocol" }
+justdrop-discovery = { path = "../justdrop-discovery" }
+justdrop-security = { path = "../justdrop-security" }
+justdrop-network = { path = "../justdrop-network" }
+justdrop-storage = { path = "../justdrop-storage" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+clap = { workspace = true }
+anyhow = { workspace = true }
+uuid = { workspace = true }
+serde_json = { workspace = true }
+parking_lot = { workspace = true }

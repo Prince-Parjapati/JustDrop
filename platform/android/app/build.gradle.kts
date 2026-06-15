@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace = "com.rustdrop.app"
+    namespace = "com.justdrop.app"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.rustdrop.app"
+        applicationId = "com.justdrop.app"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

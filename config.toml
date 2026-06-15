@@ -1,4 +1,4 @@
-# RustDrop Configuration
+# JustDrop Configuration
 
 [general]
 # Human-readable device name (auto-detected if empty)
@@ -40,7 +40,7 @@ auto_accept_all = false
 
 [discovery]
 # mDNS service type
-service_type = "_rustdrop._tcp.local."
+service_type = "_justdrop._tcp.local."
 # How often to re-announce presence (seconds)
 announce_interval_secs = 60
 # Peer timeout — consider offline after this many seconds without announcement

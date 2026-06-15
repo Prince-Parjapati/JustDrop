@@ -1,0 +1,28 @@
+[package]
+name = "justdrop-network"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "TCP transport with socket tuning and zero-copy sendfile for JustDrop"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+justdrop-security = { path = "../justdrop-security" }
+tokio = { workspace = true }
+tokio-util = { workspace = true }
+socket2 = { workspace = true }
+bytes = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+pin-project-lite = { workspace = true }
+
+[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
+rustix = { workspace = true }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+snow = "0.10"

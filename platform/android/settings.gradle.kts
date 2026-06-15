@@ -12,5 +12,5 @@ dependencyResolutionManagement {
         mavenCentral()
     }
 }
-rootProject.name = "RustDrop"
+rootProject.name = "JustDrop"
 include(":app")

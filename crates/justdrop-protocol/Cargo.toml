@@ -1,0 +1,33 @@
+[package]
+name = "justdrop-protocol"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Wire protocol, state machine, and transfer manager for JustDrop"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+justdrop-network = { path = "../justdrop-network" }
+justdrop-security = { path = "../justdrop-security" }
+justdrop-storage = { path = "../justdrop-storage" }
+justdrop-discovery = { path = "../justdrop-discovery" }
+tokio = { workspace = true }
+bincode = { workspace = true }
+serde = { workspace = true }
+bytes = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+parking_lot = { workspace = true }
+sha2 = { workspace = true }
+snow = "0.10"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tracing-subscriber = { workspace = true }
+rand = { workspace = true }

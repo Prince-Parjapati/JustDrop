@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/rustdrop-core",
-    "crates/rustdrop-discovery",
-    "crates/rustdrop-security",
-    "crates/rustdrop-network",
-    "crates/rustdrop-protocol",
-    "crates/rustdrop-storage",
-    "crates/rustdrop-ffi",
-    "crates/rustdrop-daemon",
+    "crates/justdrop-core",
+    "crates/justdrop-discovery",
+    "crates/justdrop-security",
+    "crates/justdrop-network",
+    "crates/justdrop-protocol",
+    "crates/justdrop-storage",
+    "crates/justdrop-ffi",
+    "crates/justdrop-daemon",
 ]
 
 [workspace.package]

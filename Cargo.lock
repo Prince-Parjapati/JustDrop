@@ -665,6 +665,149 @@ dependencies = [
 ]
 
 [[package]]
+name = "justdrop-core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "chrono",
+ "dirs",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "toml",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "justdrop-daemon"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "justdrop-core",
+ "justdrop-discovery",
+ "justdrop-network",
+ "justdrop-protocol",
+ "justdrop-security",
+ "justdrop-storage",
+ "parking_lot",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "justdrop-discovery"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "justdrop-core",
+ "mdns-sd",
+ "parking_lot",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
+name = "justdrop-ffi"
+version = "0.1.0"
+dependencies = [
+ "justdrop-core",
+ "justdrop-discovery",
+ "justdrop-network",
+ "justdrop-protocol",
+ "justdrop-security",
+ "parking_lot",
+ "serde_json",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "justdrop-network"
+version = "0.1.0"
+dependencies = [
+ "bytes",
+ "futures",
+ "justdrop-core",
+ "justdrop-security",
+ "libc",
+ "pin-project-lite",
+ "rustix",
+ "snow",
+ "socket2 0.5.10",
+ "tokio",
+ "tokio-util",
+ "tracing",
+]
+
+[[package]]
+name = "justdrop-protocol"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "bytes",
+ "chrono",
+ "justdrop-core",
+ "justdrop-discovery",
+ "justdrop-network",
+ "justdrop-security",
+ "justdrop-storage",
+ "libc",
+ "parking_lot",
+ "rand",
+ "serde",
+ "sha2",
+ "snow",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid",
+]
+
+[[package]]
+name = "justdrop-security"
+version = "0.1.0"
+dependencies = [
+ "blake2",
+ "dirs",
+ "justdrop-core",
+ "rand",
+ "serde",
+ "serde_json",
+ "snow",
+ "tokio",
+ "tracing",
+ "zeroize",
+]
+
+[[package]]
+name = "justdrop-storage"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bytes",
+ "chrono",
+ "justdrop-core",
+ "rand",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -985,149 +1128,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
 dependencies = [
  "semver",
-]
-
-[[package]]
-name = "rustdrop-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "chrono",
- "dirs",
- "serde",
- "serde_json",
- "thiserror 2.0.18",
- "tokio",
- "toml",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "rustdrop-daemon"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "clap",
- "parking_lot",
- "rustdrop-core",
- "rustdrop-discovery",
- "rustdrop-network",
- "rustdrop-protocol",
- "rustdrop-security",
- "rustdrop-storage",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "rustdrop-discovery"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "mdns-sd",
- "parking_lot",
- "rustdrop-core",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "rustdrop-ffi"
-version = "0.1.0"
-dependencies = [
- "parking_lot",
- "rustdrop-core",
- "rustdrop-discovery",
- "rustdrop-network",
- "rustdrop-protocol",
- "rustdrop-security",
- "serde_json",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "rustdrop-network"
-version = "0.1.0"
-dependencies = [
- "bytes",
- "futures",
- "libc",
- "pin-project-lite",
- "rustdrop-core",
- "rustdrop-security",
- "rustix",
- "snow",
- "socket2 0.5.10",
- "tokio",
- "tokio-util",
- "tracing",
-]
-
-[[package]]
-name = "rustdrop-protocol"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "bytes",
- "chrono",
- "libc",
- "parking_lot",
- "rand",
- "rustdrop-core",
- "rustdrop-discovery",
- "rustdrop-network",
- "rustdrop-security",
- "rustdrop-storage",
- "serde",
- "sha2",
- "snow",
- "tokio",
- "tracing",
- "tracing-subscriber",
- "uuid",
-]
-
-[[package]]
-name = "rustdrop-security"
-version = "0.1.0"
-dependencies = [
- "blake2",
- "dirs",
- "rand",
- "rustdrop-core",
- "serde",
- "serde_json",
- "snow",
- "tokio",
- "tracing",
- "zeroize",
-]
-
-[[package]]
-name = "rustdrop-storage"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bytes",
- "chrono",
- "rand",
- "rustdrop-core",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tracing",
- "uuid",
 ]
 
 [[package]]

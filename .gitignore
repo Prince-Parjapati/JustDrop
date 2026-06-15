@@ -17,7 +17,7 @@ platform/android/local.properties
 platform/android/app/src/main/jniLibs/
 
 # macOS / Build outputs
-rustdrop-macos-daemon
+justdrop-macos-daemon
 *.zip
 *.apk
 

@@ -15,24 +15,29 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
+    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
 
     <application
-        android:name=".RustDropApp"
-        android:label="RustDrop"
+        android:name=".JustDropApp"
+        android:label="JustDrop"
         android:supportsRtl="true"
-        android:theme="@style/Theme.RustDrop">
+        android:requestLegacyExternalStorage="true"
+        android:theme="@style/Theme.JustDrop">
 
         <!-- Background Transfer Service -->
         <service
-            android:name=".RustDropService"
+            android:name=".JustDropService"
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
         <!-- Share Sheet Activity (receives ACTION_SEND) -->
         <activity
             android:name=".ShareActivity"
-            android:label="Send with RustDrop"
-            android:theme="@style/Theme.RustDrop.Transparent"
+            android:label="Send with JustDrop"
+            android:theme="@style/Theme.JustDrop.Transparent"
             android:excludeFromRecents="true"
             android:noHistory="true"
             android:exported="true">
@@ -51,7 +56,7 @@
         <!-- Device Picker (bottom sheet) -->
         <activity
             android:name=".DevicePickerActivity"
-            android:theme="@style/Theme.RustDrop.BottomSheet"
+            android:theme="@style/Theme.JustDrop.BottomSheet"
             android:excludeFromRecents="true"
             android:exported="false" />
 
@@ -64,10 +69,20 @@
             </intent-filter>
         </receiver>
 
+        <!-- Transfer Accept/Reject Receiver -->
+        <receiver
+            android:name=".TransferActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.justdrop.ACTION_ACCEPT" />
+                <action android:name="com.justdrop.ACTION_REJECT" />
+            </intent-filter>
+        </receiver>
+
         <!-- Quick Settings Tile (Control Center toggle) -->
         <service
-            android:name=".RustDropTileService"
-            android:label="RustDrop"
+            android:name=".JustDropTileService"
+            android:label="JustDrop"
             android:icon="@android:drawable/ic_menu_share"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:exported="true">

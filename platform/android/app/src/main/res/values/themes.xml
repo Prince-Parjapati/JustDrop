@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.RustDrop" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+    <style name="Theme.JustDrop" parent="Theme.MaterialComponents.DayNight.NoActionBar">
         <item name="colorPrimary">#6200EE</item>
         <item name="colorPrimaryVariant">#3700B3</item>
         <item name="colorOnPrimary">#FFFFFF</item>
@@ -9,7 +9,7 @@
         <item name="colorOnSecondary">#000000</item>
     </style>
 
-    <style name="Theme.RustDrop.Transparent" parent="Theme.RustDrop">
+    <style name="Theme.JustDrop.Transparent" parent="Theme.JustDrop">
         <item name="android:windowIsTranslucent">true</item>
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowContentOverlay">@null</item>
@@ -17,7 +17,7 @@
         <item name="android:backgroundDimEnabled">false</item>
     </style>
 
-    <style name="Theme.RustDrop.BottomSheet" parent="Theme.Design.Light.BottomSheetDialog">
+    <style name="Theme.JustDrop.BottomSheet" parent="Theme.Design.Light.BottomSheetDialog">
         <item name="android:windowIsFloating">false</item>
         <item name="android:windowSoftInputMode">adjustResize</item>
     </style>

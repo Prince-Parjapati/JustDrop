@@ -1,0 +1,23 @@
+[package]
+name = "justdrop-storage"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "File chunking, resume tracking, and integrity verification for JustDrop"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+tokio = { workspace = true }
+sha2 = { workspace = true }
+bytes = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }
+tracing = { workspace = true }
+anyhow = { workspace = true }
+chrono = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+rand = { workspace = true }

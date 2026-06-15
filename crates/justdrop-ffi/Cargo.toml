@@ -1,0 +1,23 @@
+[package]
+name = "justdrop-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "C ABI and platform bindings for JustDrop"
+
+[lib]
+crate-type = ["cdylib", "staticlib"]
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+justdrop-protocol = { path = "../justdrop-protocol" }
+justdrop-discovery = { path = "../justdrop-discovery" }
+justdrop-security = { path = "../justdrop-security" }
+justdrop-network = { path = "../justdrop-network" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
+parking_lot = { workspace = true }
+serde_json = { workspace = true }
+uuid = { workspace = true }

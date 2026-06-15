@@ -1,0 +1,19 @@
+[package]
+name = "justdrop-discovery"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "mDNS service discovery for JustDrop peer detection"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+mdns-sd = "0.20"
+tokio = { workspace = true }
+tracing = { workspace = true }
+chrono = { workspace = true }
+parking_lot = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tracing-subscriber = { workspace = true }
