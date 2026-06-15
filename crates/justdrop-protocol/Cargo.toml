@@ -12,8 +12,11 @@ justdrop-network = { path = "../justdrop-network" }
 justdrop-security = { path = "../justdrop-security" }
 justdrop-storage = { path = "../justdrop-storage" }
 justdrop-discovery = { path = "../justdrop-discovery" }
+justdrop-transport = { path = "../justdrop-transport" }
+justdrop-ble = { path = "../justdrop-ble" }
 tokio = { workspace = true }
 bincode = { workspace = true }
+postcard = { workspace = true }
 serde = { workspace = true }
 bytes = { workspace = true }
 uuid = { workspace = true }
@@ -22,6 +25,8 @@ anyhow = { workspace = true }
 chrono = { workspace = true }
 parking_lot = { workspace = true }
 sha2 = { workspace = true }
+blake3 = { workspace = true }
+thiserror = { workspace = true }
 snow = "0.10"
 
 [target.'cfg(unix)'.dependencies]

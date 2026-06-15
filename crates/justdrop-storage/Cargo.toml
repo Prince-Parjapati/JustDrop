@@ -10,6 +10,8 @@ description = "File chunking, resume tracking, and integrity verification for Ju
 justdrop-core = { path = "../justdrop-core" }
 tokio = { workspace = true }
 sha2 = { workspace = true }
+blake3 = { workspace = true }
+zstd = { workspace = true }
 bytes = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -17,7 +19,9 @@ uuid = { workspace = true }
 tracing = { workspace = true }
 anyhow = { workspace = true }
 chrono = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 rand = { workspace = true }
+tempfile = "3"
