@@ -11,6 +11,7 @@ class StatusBarController: NSObject {
     private var statusItem: NSStatusItem?
     private var isActive: Bool = false
     private let bridge = JustBridge.shared
+    private var engineInitialized: Bool = false
 
     /// Create and install the menu bar icon.
     func setup() {
@@ -47,6 +48,12 @@ class StatusBarController: NSObject {
         menu.addItem(quitItem)
 
         statusItem?.menu = menu
+
+        // Initialize engine once at startup
+        initEngine()
+
+        // Set initial visual state (not faded)
+        updateMenuState()
     }
 
     @objc private func toggleService(_ sender: NSMenuItem) {
@@ -67,23 +74,42 @@ class StatusBarController: NSObject {
 
     // MARK: - Engine control
 
+    private func initEngine() {
+        if engineInitialized { return }
+        let result = bridge.initialize()
+        engineInitialized = result
+        if result {
+            NSLog("JustDrop: Engine initialized successfully")
+        } else {
+            NSLog("JustDrop: Engine initialization failed")
+        }
+    }
+
     private func activate() {
-        guard bridge.initialize() else {
-            NSLog("JustDrop: Failed to initialize engine")
+        // Ensure engine is initialized
+        if !engineInitialized {
+            initEngine()
+        }
+        guard engineInitialized else {
+            NSLog("JustDrop: Cannot activate - engine not initialized")
             return
         }
-        guard bridge.startDiscovery() else {
+
+        let discoveryOk = bridge.startDiscovery()
+        if !discoveryOk {
             NSLog("JustDrop: Failed to start discovery")
             return
         }
+
         isActive = true
-        NSLog("JustDrop: Activated from menu bar")
+        NSLog("JustDrop: Activated — discovery started")
     }
 
     private func deactivate() {
         bridge.shutdown()
+        engineInitialized = false
         isActive = false
-        NSLog("JustDrop: Deactivated from menu bar")
+        NSLog("JustDrop: Deactivated")
     }
 
     private func updateMenuState() {
@@ -106,8 +132,10 @@ class StatusBarController: NSObject {
             } else {
                 button.image = NSImage(systemSymbolName: "arrow.triangle.swap",
                                        accessibilityDescription: "JustDrop Off")
-                button.appearsDisabled = true
+                button.appearsDisabled = false  // Don't fade the icon when off either
             }
+            button.image?.size = NSSize(width: 18, height: 18)
+            button.image?.isTemplate = true
         }
     }
 }

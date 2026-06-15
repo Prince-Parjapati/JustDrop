@@ -57,10 +57,16 @@ impl ServiceRegistrar {
             .map(|(k, v)| (k.as_str(), v.as_str()))
             .collect();
 
+        // mDNS hostname must end with ".local." and contain no spaces
+        let sanitized = self
+            .instance_name
+            .replace(|c: char| !c.is_alphanumeric() && c != '-', "-");
+        let mdns_hostname = format!("{sanitized}.local.");
+
         let service_info = ServiceInfo::new(
             &self.service_type,
             &self.instance_name,
-            &self.instance_name,
+            &mdns_hostname,
             "",   // Let the library determine the host IP
             port,
             &props[..],

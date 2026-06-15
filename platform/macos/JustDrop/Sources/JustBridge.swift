@@ -7,6 +7,8 @@ class JustBridge {
 
     static let shared = JustBridge()
 
+    private var initialized = false
+
     private init() {}
 
     // MARK: - FFI Declarations
@@ -40,8 +42,13 @@ class JustBridge {
 
     // MARK: - Swift API
 
-    /// Initialize the Rust engine.
+    /// Initialize the Rust engine. Returns true if already initialized or newly initialized.
     func initialize(configPath: String? = nil) -> Bool {
+        if initialized {
+            NSLog("JustDrop Bridge: Already initialized")
+            return true
+        }
+
         let result: Int32
         if let path = configPath {
             result = path.withCString { JustBridge.ffi_init($0) }
@@ -54,6 +61,10 @@ class JustBridge {
             if let bundleId = Bundle.main.bundleIdentifier {
                 bundleId.withCString { _ = JustBridge.ffi_setBundleId($0) }
             }
+            initialized = true
+            NSLog("JustDrop Bridge: Engine initialized OK")
+        } else {
+            NSLog("JustDrop Bridge: Engine init failed with code %d", result)
         }
 
         return result == 0
@@ -61,7 +72,13 @@ class JustBridge {
 
     /// Start mDNS discovery.
     func startDiscovery() -> Bool {
-        return JustBridge.ffi_startDiscovery() == 0
+        let result = JustBridge.ffi_startDiscovery()
+        if result != 0 {
+            NSLog("JustDrop Bridge: startDiscovery failed with code %d", result)
+        } else {
+            NSLog("JustDrop Bridge: Discovery started OK")
+        }
+        return result == 0
     }
 
     /// Get discovered peers as an array of dictionaries.
@@ -103,5 +120,7 @@ class JustBridge {
     /// Shut down the engine.
     func shutdown() {
         _ = JustBridge.ffi_shutdown()
+        initialized = false
+        NSLog("JustDrop Bridge: Engine shut down")
     }
 }

@@ -297,9 +297,21 @@ impl Config {
 
 /// Get the system hostname.
 fn hostname() -> String {
+    // Try the `hostname` command (works on macOS/Linux)
+    if let Ok(output) = std::process::Command::new("hostname").output() {
+        if output.status.success() {
+            let name = String::from_utf8_lossy(&output.stdout)
+                .trim()
+                .trim_end_matches(".local")
+                .to_string();
+            if !name.is_empty() {
+                return name;
+            }
+        }
+    }
     std::env::var("HOSTNAME")
         .or_else(|_| std::env::var("COMPUTERNAME"))
-        .unwrap_or_else(|_| "JustDrop Device".into())
+        .unwrap_or_else(|_| "JustDrop-Device".into())
 }
 
 #[cfg(test)]

@@ -144,6 +144,9 @@ pub extern "C" fn justdrop_start_discovery() -> c_int {
     let port = engine.config.network.listen_port;
     let fingerprint = *engine.identity.fingerprint();
 
+    // Enter the Tokio runtime context so spawn_blocking works inside the browser
+    let _rt_guard = engine.runtime.enter();
+
     // Register our service
     let mut registrar = match ServiceRegistrar::new(service_type, &device_name) {
         Ok(r) => r,

@@ -4,6 +4,7 @@ import Cocoa
 ///
 /// On launch, installs a status bar icon that lets the user toggle
 /// the transfer engine on and off, like AirDrop in Control Center.
+/// Also registers an NSService so JustDrop appears in the Share menu.
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let statusBarController = StatusBarController()
@@ -26,8 +27,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Install the menu bar toggle
         statusBarController.setup()
 
-        // Install the LaunchAgent if not already installed
-        installLaunchAgent()
+        // Register this app as a Services provider
+        NSApp.servicesProvider = self
+
+        // Tell LaunchServices about our services
+        NSUpdateDynamicServices()
 
         NSLog("JustDrop: Menu bar agent ready")
     }
@@ -37,52 +41,91 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         NSLog("JustDrop: Shutdown complete")
     }
 
-    /// Install the LaunchAgent plist for auto-start on login.
-    private func installLaunchAgent() {
-        let launchAgentsDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/LaunchAgents")
+    // MARK: - macOS Services handler
 
-        let plistName = "com.justdrop.daemon.plist"
-        let destPath = launchAgentsDir.appendingPathComponent(plistName)
+    /// Called when user selects "Send with JustDrop" from Services / Share menu.
+    @objc func sendWithJustDrop(
+        _ pboard: NSPasteboard,
+        userData: String,
+        error: AutoreleasingUnsafeMutablePointer<NSString?>
+    ) {
+        NSLog("JustDrop Service: Invoked with pasteboard types: %@",
+              pboard.types?.map { $0.rawValue }.joined(separator: ", ") ?? "none")
 
-        // Skip if already installed
-        if FileManager.default.fileExists(atPath: destPath.path) {
+        var filePaths: [String] = []
+
+        // Try to read file URLs from the pasteboard
+        if let urls = pboard.readObjects(forClasses: [NSURL.self],
+                                         options: [.urlReadingFileURLsOnly: true]) as? [URL] {
+            filePaths = urls.map { $0.path }
+        }
+
+        // Fallback: try filenames
+        if filePaths.isEmpty,
+           let fileNames = pboard.propertyList(
+               forType: NSPasteboard.PasteboardType("NSFilenamesPboardType")
+           ) as? [String] {
+            filePaths = fileNames
+        }
+
+        guard !filePaths.isEmpty else {
+            NSLog("JustDrop Service: No files found on pasteboard")
+            error.pointee = "No files selected" as NSString
             return
         }
 
-        // Create LaunchAgents directory if needed
-        try? FileManager.default.createDirectory(
-            at: launchAgentsDir,
-            withIntermediateDirectories: true
-        )
+        NSLog("JustDrop Service: %d file(s) to send", filePaths.count)
 
-        guard let executablePath = Bundle.main.executablePath else { return }
+        // Ensure engine is running
+        let bridge = JustBridge.shared
+        _ = bridge.initialize()
+        _ = bridge.startDiscovery()
 
-        let plistContent = """
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
-          "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>Label</key>
-            <string>com.justdrop.daemon</string>
-            <key>ProgramArguments</key>
-            <array>
-                <string>\(executablePath)</string>
-            </array>
-            <key>RunAtLoad</key>
-            <true/>
-            <key>KeepAlive</key>
-            <true/>
-            <key>StandardOutPath</key>
-            <string>/tmp/justdrop.log</string>
-            <key>StandardErrorPath</key>
-            <string>/tmp/justdrop.err</string>
-        </dict>
-        </plist>
-        """
+        // Show peer picker after brief discovery period
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            let peers = bridge.getPeers()
 
-        try? plistContent.write(to: destPath, atomically: true, encoding: .utf8)
-        NSLog("JustDrop: LaunchAgent installed at \(destPath.path)")
+            if peers.isEmpty {
+                let alert = NSAlert()
+                alert.messageText = "No Devices Found"
+                alert.informativeText = "Make sure the receiving device is on the same network and has JustDrop enabled."
+                alert.alertStyle = .informational
+                alert.addButton(withTitle: "OK")
+                alert.runModal()
+                return
+            }
+
+            // Single peer — send directly
+            if peers.count == 1, let peerId = peers[0]["id"] as? String {
+                let name = peers[0]["name"] as? String ?? peerId
+                _ = bridge.sendFiles(peerId: peerId, filePaths: filePaths)
+                NSLog("JustDrop Service: Sending to %@", name)
+                return
+            }
+
+            // Multiple peers — show picker
+            let alert = NSAlert()
+            alert.messageText = "Send with JustDrop"
+            alert.informativeText = "Select a device (\(filePaths.count) file(s)):"
+
+            let popup = NSPopUpButton(frame: NSRect(x: 0, y: 0, width: 280, height: 28))
+            for peer in peers {
+                let name = peer["name"] as? String ?? "Unknown"
+                let platform = peer["platform"] as? String ?? ""
+                popup.addItem(withTitle: "\(name) (\(platform))")
+            }
+
+            alert.accessoryView = popup
+            alert.addButton(withTitle: "Send")
+            alert.addButton(withTitle: "Cancel")
+
+            if alert.runModal() == .alertFirstButtonReturn {
+                let idx = popup.indexOfSelectedItem
+                if idx >= 0 && idx < peers.count,
+                   let peerId = peers[idx]["id"] as? String {
+                    _ = bridge.sendFiles(peerId: peerId, filePaths: filePaths)
+                }
+            }
+        }
     }
 }
