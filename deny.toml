@@ -8,6 +8,4 @@ ignore = [
 [bans]
 multiple-versions = "warn"
 
-[licenses]
-unlicensed = "warn"
-allow-osi-fsf-free = "both"
+
