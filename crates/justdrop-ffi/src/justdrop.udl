@@ -1,0 +1,159 @@
+// UniFFI interface definition for JustDrop.
+// This generates Swift and Kotlin bindings automatically.
+
+namespace justdrop {};
+
+// ── Enums ───────────────────────────────────────────────────────────
+
+[Enum]
+interface TrustLevel {
+    Unknown();
+    Trusted();
+    Favorite();
+    Blocked();
+};
+
+[Enum]
+interface PresenceState {
+    Idle();
+    Available();
+    Receiving();
+    Busy();
+    Invisible();
+};
+
+[Enum]
+interface PlatformType {
+    MacOS();
+    Android();
+    Windows();
+    Linux();
+    Unknown();
+};
+
+[Enum]
+interface TransferDirection {
+    Send();
+    Receive();
+};
+
+[Enum]
+interface TransferStatus {
+    Negotiating();
+    Transferring();
+    Verifying();
+    Completed();
+    Failed();
+    Cancelled();
+};
+
+// ── Data Objects ────────────────────────────────────────────────────
+
+dictionary PeerInfo {
+    string device_id;
+    string name;
+    string? fingerprint;
+    PlatformType platform;
+    PresenceState presence;
+    TrustLevel trust;
+    string? address;
+    i16? rssi;
+    u8? battery;
+};
+
+dictionary TransferInfo {
+    string transfer_id;
+    string peer_name;
+    TransferDirection direction;
+    TransferStatus status;
+    u64 bytes_transferred;
+    u64 total_bytes;
+    u64 speed_bps;
+    u8 percent;
+    u64? eta_secs;
+};
+
+dictionary FileInfo {
+    string name;
+    u64 size;
+    string mime_type;
+};
+
+dictionary IncomingRequest {
+    string transfer_id;
+    PeerInfo peer;
+    sequence<FileInfo> files;
+    u64 total_size;
+};
+
+// ── Callbacks ───────────────────────────────────────────────────────
+
+callback interface JustDropEventHandler {
+    void on_peer_discovered(PeerInfo peer);
+    void on_peer_lost(string device_id);
+    void on_peer_updated(PeerInfo peer);
+    void on_incoming_request(IncomingRequest request);
+    void on_transfer_accepted(string transfer_id);
+    void on_transfer_rejected(string transfer_id, string reason);
+    void on_transfer_progress(TransferInfo info);
+    void on_transfer_completed(string transfer_id, sequence<string> saved_paths);
+    void on_transfer_failed(string transfer_id, string error);
+    void on_transfer_cancelled(string transfer_id, string reason);
+    void on_join_hotspot(string ssid, string passphrase);
+    void on_create_hotspot();
+    void on_engine_started();
+    void on_engine_stopped();
+    void on_error(string message);
+};
+
+// ── Engine Interface ────────────────────────────────────────────────
+
+[Error]
+enum JustDropError {
+    "InitFailed",
+    "NotRunning",
+    "PeerNotFound",
+    "TransferFailed",
+    "InvalidArgument",
+    "DatabaseError",
+};
+
+interface JustDropEngine {
+    [Throws=JustDropError]
+    constructor(string data_dir, string? config_path, JustDropEventHandler handler);
+
+    // Identity
+    string device_name();
+    string device_fingerprint();
+    string device_uuid();
+
+    // Discovery
+    [Throws=JustDropError]
+    void start_discovery();
+    void stop_discovery();
+    sequence<PeerInfo> visible_peers();
+    u32 peer_count();
+
+    // Trust
+    [Throws=JustDropError]
+    void set_peer_trust(string fingerprint, TrustLevel level);
+
+    // Transfers
+    [Throws=JustDropError]
+    string send_files(string device_id, sequence<string> file_paths);
+
+    [Throws=JustDropError]
+    void accept_transfer(string transfer_id);
+
+    [Throws=JustDropError]
+    void reject_transfer(string transfer_id, string reason);
+
+    [Throws=JustDropError]
+    void cancel_transfer(string transfer_id);
+
+    u32 active_transfer_count();
+
+    // Lifecycle
+    boolean is_running();
+    void stop();
+};

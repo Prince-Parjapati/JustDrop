@@ -1,312 +1,423 @@
-//! C ABI exports for platform integration.
+//! UniFFI bindings for JustDrop.
 //!
-//! All functions use C-compatible types and follow a consistent pattern:
-//! - Return `0` for success, negative for error
-//! - Use opaque pointers for state
-//! - String parameters are null-terminated C strings
-//! - Callbacks use function pointers with `void*` context
+//! This crate generates Swift and Kotlin bindings via UniFFI.
+//! All types and the engine interface are defined in `justdrop.udl`.
 
-#![allow(clippy::not_unsafe_ptr_arg_deref)]
+uniffi::include_scaffolding!("justdrop");
 
+use justdrop_core::config::Config;
+use justdrop_core::trust::TrustLevel as CoreTrustLevel;
+use justdrop_engine::events::{EngineEvent, EngineEventHandler};
+use justdrop_engine::peer::{DiscoverySource, Peer as EnginePeer};
+use justdrop_engine::session::Direction;
+use justdrop_engine::engine::{Engine, EngineConfig, EngineError as CoreEngineError};
+use parking_lot::RwLock;
+use std::path::PathBuf;
+use std::sync::Arc;
+use tracing::info;
+use uuid::Uuid;
+
+// Legacy modules retained for backward compat during migration
 pub mod android;
 pub mod macos;
 
-use parking_lot::Mutex;
-use justdrop_core::config::Config;
-use justdrop_core::types::DeviceInfo;
-use justdrop_discovery::{PeerEvent, ServiceBrowser, ServiceRegistrar};
-use justdrop_network::TransferListener;
-use justdrop_protocol::{
-    IncomingTransferDecision, RecvTransfer, SendTransfer, TransferEvent,
-};
-use justdrop_security::IdentityKeys;
-use std::ffi::{CStr, CString};
-use std::os::raw::{c_char, c_int, c_void};
-use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::runtime::Runtime;
-use tokio::sync::mpsc;
-use tracing::{error, info};
+// ── UniFFI Type Mappings ────────────────────────────────────────────
 
-/// Opaque handle to the JustDrop engine.
-pub struct JustDropEngine {
-    runtime: Runtime,
-    config: Config,
-    identity: Arc<IdentityKeys>,
-    registrar: Option<ServiceRegistrar>,
-    browser: Option<ServiceBrowser>,
-    event_tx: mpsc::Sender<TransferEvent>,
-    event_rx: Mutex<Option<mpsc::Receiver<TransferEvent>>>,
+#[derive(Debug, Clone)]
+pub enum TrustLevel {
+    Unknown,
+    Trusted,
+    Favorite,
+    Blocked,
 }
 
-/// Global engine instance (singleton).
-static ENGINE: Mutex<Option<Box<JustDropEngine>>> = Mutex::new(None);
+impl From<CoreTrustLevel> for TrustLevel {
+    fn from(t: CoreTrustLevel) -> Self {
+        match t {
+            CoreTrustLevel::Unknown => TrustLevel::Unknown,
+            CoreTrustLevel::Trusted => TrustLevel::Trusted,
+            CoreTrustLevel::Favorite => TrustLevel::Favorite,
+            CoreTrustLevel::Blocked => TrustLevel::Blocked,
+        }
+    }
+}
 
-/// Progress callback function pointer.
-pub type ProgressCallback = extern "C" fn(
-    ctx: *mut c_void,
-    transfer_id: *const c_char,
-    bytes_transferred: u64,
-    total_bytes: u64,
-    speed_bps: u64,
-);
+impl From<TrustLevel> for CoreTrustLevel {
+    fn from(t: TrustLevel) -> Self {
+        match t {
+            TrustLevel::Unknown => CoreTrustLevel::Unknown,
+            TrustLevel::Trusted => CoreTrustLevel::Trusted,
+            TrustLevel::Favorite => CoreTrustLevel::Favorite,
+            TrustLevel::Blocked => CoreTrustLevel::Blocked,
+        }
+    }
+}
 
-/// Peer discovered callback.
-pub type PeerCallback = extern "C" fn(
-    ctx: *mut c_void,
-    peer_id: *const c_char,
-    peer_name: *const c_char,
-    peer_addr: *const c_char,
-    platform: *const c_char,
-);
+#[derive(Debug, Clone)]
+pub enum PresenceState {
+    Idle,
+    Available,
+    Receiving,
+    Busy,
+    Invisible,
+}
 
-/// Incoming transfer request callback. Return 1 to accept, 0 to reject.
-pub type TransferRequestCallback = extern "C" fn(
-    ctx: *mut c_void,
-    transfer_id: *const c_char,
-    sender_name: *const c_char,
-    file_count: u32,
-    total_size: u64,
-) -> c_int;
+impl From<justdrop_ble::advertisement::PresenceState> for PresenceState {
+    fn from(p: justdrop_ble::advertisement::PresenceState) -> Self {
+        match p {
+            justdrop_ble::advertisement::PresenceState::Idle => PresenceState::Idle,
+            justdrop_ble::advertisement::PresenceState::Available => PresenceState::Available,
+            justdrop_ble::advertisement::PresenceState::Receiving => PresenceState::Receiving,
+            justdrop_ble::advertisement::PresenceState::Busy => PresenceState::Busy,
+            justdrop_ble::advertisement::PresenceState::Invisible => PresenceState::Invisible,
+        }
+    }
+}
 
-/// Initialize the JustDrop engine.
-///
-/// # Safety
-/// `config_path` must be a valid null-terminated C string or NULL for defaults.
-#[no_mangle]
-pub unsafe extern "C" fn justdrop_init(config_path: *const c_char) -> c_int {
-    // Initialize tracing
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter("justdrop=info")
-        .try_init();
+#[derive(Debug, Clone)]
+pub enum PlatformType {
+    MacOS,
+    Android,
+    Windows,
+    Linux,
+    Unknown,
+}
 
-    let config = if config_path.is_null() {
-        Config::default()
-    } else {
-        let path_str = match CStr::from_ptr(config_path).to_str() {
-            Ok(s) => s,
-            Err(_) => return -1,
-        };
-        match Config::load(std::path::Path::new(path_str)) {
-            Ok(c) => c,
-            Err(e) => {
-                error!("config load failed: {e}");
-                return -2;
+impl From<justdrop_core::types::Platform> for PlatformType {
+    fn from(p: justdrop_core::types::Platform) -> Self {
+        match p {
+            justdrop_core::types::Platform::MacOS => PlatformType::MacOS,
+            justdrop_core::types::Platform::Android => PlatformType::Android,
+            justdrop_core::types::Platform::Windows => PlatformType::Windows,
+            justdrop_core::types::Platform::Linux => PlatformType::Linux,
+            justdrop_core::types::Platform::Unknown => PlatformType::Unknown,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum TransferDirection {
+    Send,
+    Receive,
+}
+
+#[derive(Debug, Clone)]
+pub enum TransferStatus {
+    Negotiating,
+    Transferring,
+    Verifying,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+// ── Data Transfer Objects ───────────────────────────────────────────
+
+#[derive(Debug, Clone)]
+pub struct PeerInfo {
+    pub device_id: String,
+    pub name: String,
+    pub fingerprint: Option<String>,
+    pub platform: PlatformType,
+    pub presence: PresenceState,
+    pub trust: TrustLevel,
+    pub address: Option<String>,
+    pub rssi: Option<i16>,
+    pub battery: Option<u8>,
+}
+
+impl From<EnginePeer> for PeerInfo {
+    fn from(p: EnginePeer) -> Self {
+        Self {
+            device_id: p.device_id,
+            name: p.name,
+            fingerprint: p.fingerprint,
+            platform: p.platform.into(),
+            presence: p.presence.into(),
+            trust: p.trust.into(),
+            address: p.addr.map(|a| a.to_string()),
+            rssi: p.rssi,
+            battery: match p.battery {
+                Some(b) => Some(b),
+                None => None,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TransferInfo {
+    pub transfer_id: String,
+    pub peer_name: String,
+    pub direction: TransferDirection,
+    pub status: TransferStatus,
+    pub bytes_transferred: u64,
+    pub total_bytes: u64,
+    pub speed_bps: u64,
+    pub percent: u8,
+    pub eta_secs: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+pub struct FileInfo {
+    pub name: String,
+    pub size: u64,
+    pub mime_type: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct IncomingRequest {
+    pub transfer_id: String,
+    pub peer: PeerInfo,
+    pub files: Vec<FileInfo>,
+    pub total_size: u64,
+}
+
+// ── Error ───────────────────────────────────────────────────────────
+
+#[derive(Debug, thiserror::Error)]
+pub enum JustDropError {
+    #[error("initialization failed")]
+    InitFailed,
+    #[error("engine not running")]
+    NotRunning,
+    #[error("peer not found")]
+    PeerNotFound,
+    #[error("transfer failed")]
+    TransferFailed,
+    #[error("invalid argument")]
+    InvalidArgument,
+    #[error("database error")]
+    DatabaseError,
+}
+
+impl From<CoreEngineError> for JustDropError {
+    fn from(e: CoreEngineError) -> Self {
+        match e {
+            CoreEngineError::Init(_) => JustDropError::InitFailed,
+            CoreEngineError::Database(_) => JustDropError::DatabaseError,
+            CoreEngineError::PeerNotFound(_) => JustDropError::PeerNotFound,
+            CoreEngineError::SessionNotFound(_) => JustDropError::TransferFailed,
+            CoreEngineError::Transfer(_) => JustDropError::TransferFailed,
+        }
+    }
+}
+
+// ── Callback Interface ──────────────────────────────────────────────
+
+pub trait JustDropEventHandler: Send + Sync {
+    fn on_peer_discovered(&self, peer: PeerInfo);
+    fn on_peer_lost(&self, device_id: String);
+    fn on_peer_updated(&self, peer: PeerInfo);
+    fn on_incoming_request(&self, request: IncomingRequest);
+    fn on_transfer_accepted(&self, transfer_id: String);
+    fn on_transfer_rejected(&self, transfer_id: String, reason: String);
+    fn on_transfer_progress(&self, info: TransferInfo);
+    fn on_transfer_completed(&self, transfer_id: String, saved_paths: Vec<String>);
+    fn on_transfer_failed(&self, transfer_id: String, error: String);
+    fn on_transfer_cancelled(&self, transfer_id: String, reason: String);
+    fn on_join_hotspot(&self, ssid: String, passphrase: String);
+    fn on_create_hotspot(&self);
+    fn on_engine_started(&self);
+    fn on_engine_stopped(&self);
+    fn on_error(&self, message: String);
+}
+
+/// Bridge from Engine events to UniFFI callback.
+struct EventBridge {
+    handler: Box<dyn JustDropEventHandler>,
+}
+
+impl EngineEventHandler for EventBridge {
+    fn on_event(&self, event: EngineEvent) {
+        match event {
+            EngineEvent::PeerDiscovered(p) => self.handler.on_peer_discovered(p.into()),
+            EngineEvent::PeerLost { device_id } => self.handler.on_peer_lost(device_id),
+            EngineEvent::PeerUpdated(p) => self.handler.on_peer_updated(p.into()),
+            EngineEvent::IncomingTransferRequest {
+                transfer_id,
+                peer,
+                manifest,
+                previews: _,
+            } => {
+                let files: Vec<FileInfo> = manifest
+                    .files
+                    .iter()
+                    .map(|f| FileInfo {
+                        name: f.relative_path.clone(),
+                        size: f.size,
+                        mime_type: f.mime_type.clone(),
+                    })
+                    .collect();
+                self.handler.on_incoming_request(IncomingRequest {
+                    transfer_id: transfer_id.to_string(),
+                    peer: peer.into(),
+                    total_size: manifest.total_size,
+                    files,
+                });
+            }
+            EngineEvent::TransferAccepted { transfer_id } => {
+                self.handler.on_transfer_accepted(transfer_id.to_string());
+            }
+            EngineEvent::TransferRejected {
+                transfer_id,
+                reason,
+            } => {
+                self.handler
+                    .on_transfer_rejected(transfer_id.to_string(), reason);
+            }
+            EngineEvent::TransferProgress(p) => {
+                self.handler.on_transfer_progress(TransferInfo {
+                    transfer_id: p.transfer_id.to_string(),
+                    peer_name: String::new(),
+                    direction: TransferDirection::Send,
+                    status: TransferStatus::Transferring,
+                    bytes_transferred: p.bytes_transferred,
+                    total_bytes: p.total_bytes,
+                    speed_bps: p.speed_bps,
+                    percent: p.percent(),
+                    eta_secs: p.eta_secs,
+                });
+            }
+            EngineEvent::TransferCompleted {
+                transfer_id,
+                saved_paths,
+            } => {
+                let paths: Vec<String> = saved_paths
+                    .iter()
+                    .map(|p| p.to_string_lossy().to_string())
+                    .collect();
+                self.handler.on_transfer_completed(transfer_id.to_string(), paths);
+            }
+            EngineEvent::TransferFailed { transfer_id, error } => {
+                self.handler
+                    .on_transfer_failed(transfer_id.to_string(), error);
+            }
+            EngineEvent::TransferCancelled {
+                transfer_id,
+                reason,
+            } => {
+                self.handler
+                    .on_transfer_cancelled(transfer_id.to_string(), reason);
+            }
+            EngineEvent::JoinHotspot { ssid, passphrase } => {
+                self.handler.on_join_hotspot(ssid, passphrase);
+            }
+            EngineEvent::CreateHotspot => {
+                self.handler.on_create_hotspot();
+            }
+            EngineEvent::Started => {
+                self.handler.on_engine_started();
+            }
+            EngineEvent::Stopped => {
+                self.handler.on_engine_stopped();
+            }
+            EngineEvent::Error { message } => {
+                self.handler.on_error(message);
             }
         }
-    };
-
-    let runtime = match Runtime::new() {
-        Ok(r) => r,
-        Err(e) => {
-            error!("runtime creation failed: {e}");
-            return -3;
-        }
-    };
-
-    let data_dir = Config::data_dir();
-    let identity = match IdentityKeys::load_or_generate(&data_dir) {
-        Ok(k) => Arc::new(k),
-        Err(e) => {
-            error!("key generation failed: {e}");
-            return -4;
-        }
-    };
-
-    let (event_tx, event_rx) = mpsc::channel(256);
-
-    let engine = JustDropEngine {
-        runtime,
-        config,
-        identity,
-        registrar: None,
-        browser: None,
-        event_tx,
-        event_rx: Mutex::new(Some(event_rx)),
-    };
-
-    *ENGINE.lock() = Some(Box::new(engine));
-    info!("JustDrop engine initialized");
-    0
-}
-
-/// Start mDNS discovery (register + browse).
-#[no_mangle]
-pub extern "C" fn justdrop_start_discovery() -> c_int {
-    let mut guard = ENGINE.lock();
-    let engine = match guard.as_mut() {
-        Some(e) => e,
-        None => return -1,
-    };
-
-    let service_type = &engine.config.discovery.service_type.clone();
-    let device_name = engine.config.device_name();
-    let port = engine.config.network.listen_port;
-    let fingerprint = *engine.identity.fingerprint();
-
-    // Enter the Tokio runtime context so spawn_blocking works inside the browser
-    let _rt_guard = engine.runtime.enter();
-
-    // Register our service
-    let mut registrar = match ServiceRegistrar::new(service_type, &device_name) {
-        Ok(r) => r,
-        Err(e) => {
-            error!("registrar creation failed: {e}");
-            return -2;
-        }
-    };
-
-    if let Err(e) = registrar.register(port, &fingerprint) {
-        error!("service registration failed: {e}");
-        return -3;
-    }
-
-    // Start browsing
-    let (browser, _rx) = ServiceBrowser::new(service_type);
-    if let Err(e) = browser.start_browsing(registrar.daemon()) {
-        error!("browse start failed: {e}");
-        return -4;
-    }
-
-    engine.registrar = Some(registrar);
-    engine.browser = Some(browser);
-
-    info!("discovery started");
-    0
-}
-
-/// Get list of discovered peers as JSON.
-///
-/// # Safety
-/// Caller must free the returned string with `justdrop_free_string`.
-#[no_mangle]
-pub extern "C" fn justdrop_get_peers() -> *mut c_char {
-    let guard = ENGINE.lock();
-    let engine = match guard.as_ref() {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
-    };
-
-    let peers = engine
-        .browser
-        .as_ref()
-        .map(|b| b.peers())
-        .unwrap_or_default();
-
-    let json = match serde_json::to_string(&peers) {
-        Ok(j) => j,
-        Err(_) => return std::ptr::null_mut(),
-    };
-
-    match CString::new(json) {
-        Ok(c) => c.into_raw(),
-        Err(_) => std::ptr::null_mut(),
     }
 }
 
-/// Send files to a peer.
-///
-/// # Safety
-/// `peer_id` and `file_paths_json` must be valid null-terminated C strings.
-/// `file_paths_json` is a JSON array of file path strings.
-#[no_mangle]
-pub unsafe extern "C" fn justdrop_send_files(
-    peer_id: *const c_char,
-    file_paths_json: *const c_char,
-) -> c_int {
-    let guard = ENGINE.lock();
-    let engine = match guard.as_ref() {
-        Some(e) => e,
-        None => return -1,
-    };
+// ── UniFFI Engine Wrapper ───────────────────────────────────────────
 
-    let peer_id_str = match CStr::from_ptr(peer_id).to_str() {
-        Ok(s) => s.to_string(),
-        Err(_) => return -2,
-    };
-
-    let paths_json = match CStr::from_ptr(file_paths_json).to_str() {
-        Ok(s) => s.to_string(),
-        Err(_) => return -3,
-    };
-
-    let file_paths: Vec<PathBuf> = match serde_json::from_str(&paths_json) {
-        Ok(p) => p,
-        Err(_) => return -4,
-    };
-
-    let peer = match engine.browser.as_ref().and_then(|b| b.get_peer(&peer_id_str)) {
-        Some(p) => p,
-        None => return -5,
-    };
-
-    let sender = SendTransfer::new(engine.config.clone(), Arc::clone(&engine.identity));
-    let event_tx = engine.event_tx.clone();
-
-    engine.runtime.spawn(async move {
-        match sender.send_files(&peer, &file_paths, event_tx).await {
-            Ok(id) => info!(transfer_id = %id, "send complete"),
-            Err(e) => error!("send failed: {e}"),
-        }
-    });
-
-    0
+pub struct JustDropEngine {
+    inner: Engine,
 }
 
-/// Free a string allocated by JustDrop.
-///
-/// # Safety
-/// `ptr` must have been returned by a `justdrop_*` function.
-#[no_mangle]
-pub unsafe extern "C" fn justdrop_free_string(ptr: *mut c_char) {
-    if !ptr.is_null() {
-        drop(CString::from_raw(ptr));
-    }
-}
+impl JustDropEngine {
+    pub fn new(
+        data_dir: String,
+        config_path: Option<String>,
+        handler: Box<dyn JustDropEventHandler>,
+    ) -> Result<Self, JustDropError> {
+        let _ = tracing_subscriber::fmt()
+            .with_env_filter("justdrop=info")
+            .try_init();
 
-/// Shut down the JustDrop engine.
-#[no_mangle]
-pub extern "C" fn justdrop_shutdown() -> c_int {
-    let mut guard = ENGINE.lock();
-    if let Some(engine) = guard.take() {
-        std::thread::spawn(move || {
-            drop(engine);
-            info!("JustDrop engine shut down");
-        });
-    }
-    0
-}
+        let config = match config_path {
+            Some(path) => Config::load(std::path::Path::new(&path))
+                .map_err(|_| JustDropError::InitFailed)?,
+            None => Config::default(),
+        };
 
-/// Accept an incoming transfer request.
-///
-/// # Safety
-/// `transfer_id` must be a valid null-terminated C string.
-#[no_mangle]
-pub unsafe extern "C" fn justdrop_accept_transfer(transfer_id: *const c_char) -> c_int {
-    if transfer_id.is_null() {
-        return -1;
-    }
-    let id = match CStr::from_ptr(transfer_id).to_str() {
-        Ok(s) => s,
-        Err(_) => return -2,
-    };
-    info!(transfer_id = id, "transfer accepted by user");
-    0
-}
+        let bridge = EventBridge { handler };
+        let engine_config = EngineConfig {
+            config,
+            data_dir: PathBuf::from(&data_dir),
+        };
 
-/// Reject an incoming transfer request.
-///
-/// # Safety
-/// `transfer_id` must be a valid null-terminated C string.
-#[no_mangle]
-pub unsafe extern "C" fn justdrop_reject_transfer(transfer_id: *const c_char) -> c_int {
-    if transfer_id.is_null() {
-        return -1;
+        let inner = Engine::new(engine_config, Arc::new(bridge))?;
+        Ok(Self { inner })
     }
-    let id = match CStr::from_ptr(transfer_id).to_str() {
-        Ok(s) => s,
-        Err(_) => return -2,
-    };
-    info!(transfer_id = id, "transfer rejected by user");
-    0
+
+    pub fn device_name(&self) -> String {
+        self.inner.device_name()
+    }
+
+    pub fn device_fingerprint(&self) -> String {
+        self.inner.device_fingerprint()
+    }
+
+    pub fn device_uuid(&self) -> String {
+        self.inner.device_uuid()
+    }
+
+    pub fn start_discovery(&self) -> Result<(), JustDropError> {
+        // TODO: Start BLE scanning via platform callback + mDNS browsing
+        Ok(())
+    }
+
+    pub fn stop_discovery(&self) {
+        // TODO: Stop BLE scanning + mDNS browsing
+    }
+
+    pub fn visible_peers(&self) -> Vec<PeerInfo> {
+        self.inner.visible_peers().into_iter().map(|p| p.into()).collect()
+    }
+
+    pub fn peer_count(&self) -> u32 {
+        self.inner.peer_count() as u32
+    }
+
+    pub fn set_peer_trust(&self, fingerprint: String, level: TrustLevel) -> Result<(), JustDropError> {
+        self.inner.set_peer_trust(&fingerprint, level.into())?;
+        Ok(())
+    }
+
+    pub fn send_files(&self, device_id: String, file_paths: Vec<String>) -> Result<String, JustDropError> {
+        let paths: Vec<PathBuf> = file_paths.into_iter().map(PathBuf::from).collect();
+        let id = self.inner.send_files(&device_id, paths)?;
+        Ok(id.to_string())
+    }
+
+    pub fn accept_transfer(&self, transfer_id: String) -> Result<(), JustDropError> {
+        let id = Uuid::parse_str(&transfer_id).map_err(|_| JustDropError::InvalidArgument)?;
+        self.inner.accept_transfer(id)?;
+        Ok(())
+    }
+
+    pub fn reject_transfer(&self, transfer_id: String, reason: String) -> Result<(), JustDropError> {
+        let id = Uuid::parse_str(&transfer_id).map_err(|_| JustDropError::InvalidArgument)?;
+        self.inner.reject_transfer(id, &reason)?;
+        Ok(())
+    }
+
+    pub fn cancel_transfer(&self, transfer_id: String) -> Result<(), JustDropError> {
+        let id = Uuid::parse_str(&transfer_id).map_err(|_| JustDropError::InvalidArgument)?;
+        self.inner.cancel_transfer(id)?;
+        Ok(())
+    }
+
+    pub fn active_transfer_count(&self) -> u32 {
+        self.inner.active_transfer_count() as u32
+    }
+
+    pub fn is_running(&self) -> bool {
+        self.inner.is_running()
+    }
+
+    pub fn stop(&self) {
+        self.inner.stop();
+    }
 }

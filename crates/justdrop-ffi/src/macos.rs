@@ -1,4 +1,7 @@
-//! macOS-specific FFI helpers for Swift interop.
+//! macOS-specific FFI helpers.
+//!
+//! Legacy C-ABI functions retained for backward compatibility during
+//! UniFFI migration. New code should use the `JustDropEngine` UniFFI interface.
 
 /// macOS-specific initialization.
 ///
@@ -19,23 +22,4 @@ pub unsafe extern "C" fn justdrop_macos_set_bundle_id(
 
     tracing::info!(bundle_id = id, "macOS bundle ID set");
     0
-}
-
-/// Get the engine's public key fingerprint as a hex string.
-///
-/// # Safety
-/// Caller must free the returned string with `justdrop_free_string`.
-#[no_mangle]
-pub extern "C" fn justdrop_macos_get_fingerprint() -> *mut std::os::raw::c_char {
-    let guard = super::ENGINE.lock();
-    let engine = match guard.as_ref() {
-        Some(e) => e,
-        None => return std::ptr::null_mut(),
-    };
-
-    let fp = engine.identity.fingerprint_hex();
-    match std::ffi::CString::new(fp) {
-        Ok(c) => c.into_raw(),
-        Err(_) => std::ptr::null_mut(),
-    }
 }

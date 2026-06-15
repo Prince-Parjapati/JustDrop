@@ -1,31 +1,28 @@
 [package]
-name = "justdrop-ffi"
+name = "justdrop-engine"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
 rust-version.workspace = true
-description = "UniFFI bindings for JustDrop — generates Swift and Kotlin bindings"
-
-[lib]
-crate-type = ["cdylib", "staticlib", "lib"]
+description = "Central orchestrator for JustDrop — manages discovery, sessions, and transfers"
 
 [dependencies]
 justdrop-core = { path = "../justdrop-core" }
-justdrop-engine = { path = "../justdrop-engine" }
 justdrop-ble = { path = "../justdrop-ble" }
+justdrop-transport = { path = "../justdrop-transport" }
 justdrop-protocol = { path = "../justdrop-protocol" }
-justdrop-discovery = { path = "../justdrop-discovery" }
 justdrop-security = { path = "../justdrop-security" }
-justdrop-network = { path = "../justdrop-network" }
-uniffi = { workspace = true }
+justdrop-storage = { path = "../justdrop-storage" }
+justdrop-discovery = { path = "../justdrop-discovery" }
 tokio = { workspace = true }
 tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
 parking_lot = { workspace = true }
-serde_json = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
 thiserror = { workspace = true }
+bytes = { workspace = true }
 
-[build-dependencies]
-uniffi = { workspace = true, features = ["build"] }
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tracing-subscriber = { workspace = true }
+tempfile = "3"

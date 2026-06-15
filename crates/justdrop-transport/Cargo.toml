@@ -20,3 +20,5 @@ futures = { workspace = true }
 [dev-dependencies]
 tokio = { workspace = true, features = ["test-util"] }
 tracing-subscriber = { workspace = true }
+ring = { workspace = true }
+rcgen = "0.13"

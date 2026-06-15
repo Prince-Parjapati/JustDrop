@@ -9,6 +9,7 @@ members = [
     "crates/justdrop-transport",
     "crates/justdrop-protocol",
     "crates/justdrop-storage",
+    "crates/justdrop-engine",
     "crates/justdrop-ffi",
     "crates/justdrop-daemon",
 ]
@@ -78,7 +79,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 clap = { version = "4", features = ["derive"] }
 
 # FFI (Phase 1: replaces manual C-ABI)
-# uniffi = "0.28"  # Uncomment when UniFFI migration begins
+uniffi = "0.28"
 
 # Misc
 dirs = "5"
