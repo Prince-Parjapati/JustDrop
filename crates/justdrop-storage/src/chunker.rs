@@ -6,7 +6,7 @@
 
 use bytes::Bytes;
 use justdrop_core::error::StorageError;
-use justdrop_core::types::{ChunkData, ChunkId, Sha256Hash};
+use justdrop_core::types::{ChunkId, Sha256Hash};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 use tokio::fs::File;
@@ -33,11 +33,7 @@ pub struct ReadChunk {
 
 impl FileChunker {
     /// Open a file for chunked reading.
-    pub async fn open(
-        path: &Path,
-        file_index: u32,
-        chunk_size: u32,
-    ) -> Result<Self, StorageError> {
+    pub async fn open(path: &Path, file_index: u32, chunk_size: u32) -> Result<Self, StorageError> {
         let metadata = tokio::fs::metadata(path).await.map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
                 StorageError::FileNotFound {
@@ -56,7 +52,7 @@ impl FileChunker {
             path = %path.display(),
             file_size = file_size,
             chunk_size = chunk_size,
-            chunks = (file_size + chunk_size as u64 - 1) / chunk_size as u64,
+            chunks = file_size.div_ceil(chunk_size as u64),
             "opened file for chunking"
         );
 
@@ -73,7 +69,7 @@ impl FileChunker {
         if self.file_size == 0 {
             1
         } else {
-            (self.file_size + self.chunk_size as u64 - 1) / self.chunk_size as u64
+            self.file_size.div_ceil(self.chunk_size as u64)
         }
     }
 
@@ -135,7 +131,7 @@ impl FileChunker {
             .await
             .map_err(|e| StorageError::Io {
                 path: self.path.clone(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, e),
+                source: std::io::Error::other(e),
             })?
         };
 
@@ -218,14 +214,13 @@ pub async fn hash_file(path: &Path) -> Result<Sha256Hash, StorageError> {
     .await
     .map_err(|e| StorageError::Io {
         path: PathBuf::from("hash_file"),
-        source: std::io::Error::new(std::io::ErrorKind::Other, e),
+        source: std::io::Error::other(e),
     })?
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
 
     #[tokio::test]
     async fn chunk_small_file() {

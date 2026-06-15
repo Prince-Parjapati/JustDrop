@@ -6,7 +6,7 @@
 //! Encoding: `[u8 tag][postcard payload]`
 //! All messages are self-describing via the tag byte.
 
-use justdrop_core::types::{ChunkAck, ChunkId, TransferManifest, TransferResponse};
+use justdrop_core::types::{ChunkAck, ChunkId, TransferManifest};
 use serde::{Deserialize, Serialize};
 
 /// Protocol version for v2 wire format.
@@ -183,7 +183,11 @@ mod tests {
         let encoded = msg.encode().unwrap();
         let decoded = MessageV2::decode(&encoded).unwrap();
         match decoded {
-            MessageV2::Handshake { version, device_id, device_name } => {
+            MessageV2::Handshake {
+                version,
+                device_id,
+                device_name,
+            } => {
                 assert_eq!(version, 2);
                 assert_eq!(device_id, [0xAA; 8]);
                 assert_eq!(device_name, "TestMac");
@@ -231,7 +235,11 @@ mod tests {
         let encoded = msg.encode().unwrap();
         let decoded = MessageV2::decode(&encoded).unwrap();
         match decoded {
-            MessageV2::Chunk { id, compressed, data } => {
+            MessageV2::Chunk {
+                id,
+                compressed,
+                data,
+            } => {
                 assert_eq!(id.chunk_offset, 1024);
                 assert!(compressed);
                 assert_eq!(data.len(), 512);
@@ -249,7 +257,10 @@ mod tests {
         let encoded = msg.encode().unwrap();
         let decoded = MessageV2::decode(&encoded).unwrap();
         match decoded {
-            MessageV2::Resume { transfer_id, received_chunks } => {
+            MessageV2::Resume {
+                transfer_id,
+                received_chunks,
+            } => {
                 assert_eq!(transfer_id, "abc-123");
                 assert_eq!(received_chunks, vec![0xFF, 0x0F]);
             }

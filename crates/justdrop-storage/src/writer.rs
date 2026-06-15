@@ -4,11 +4,11 @@
 //! for resume tracking.
 
 use justdrop_core::error::StorageError;
-use justdrop_core::types::{ChunkId, Sha256Hash, TransferId};
+use justdrop_core::types::{Sha256Hash, TransferId};
 use sha2::{Digest, Sha256};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
-use tokio::fs::{File, OpenOptions};
+use tokio::fs::OpenOptions;
 use tokio::io::{AsyncSeekExt, AsyncWriteExt, SeekFrom};
 use tracing::{debug, trace, warn};
 
@@ -25,6 +25,7 @@ pub struct ChunkWriter {
     /// Chunk size in bytes.
     chunk_size: u32,
     /// Total expected file size.
+    #[allow(dead_code)]
     file_size: u64,
     /// Total number of chunks expected.
     total_chunks: u64,
@@ -54,6 +55,7 @@ impl ChunkWriter {
         // Create or open the temp file, pre-allocate space
         let file = OpenOptions::new()
             .create(true)
+            .truncate(false)
             .write(true)
             .open(&temp_path)
             .await
@@ -71,7 +73,7 @@ impl ChunkWriter {
         let total_chunks = if file_size == 0 {
             1
         } else {
-            (file_size + chunk_size as u64 - 1) / chunk_size as u64
+            file_size.div_ceil(chunk_size as u64)
         };
 
         debug!(
@@ -151,7 +153,7 @@ impl ChunkWriter {
             .await
             .map_err(|e| StorageError::Io {
                 path: self.temp_path.clone(),
-                source: std::io::Error::new(std::io::ErrorKind::Other, e),
+                source: std::io::Error::other(e),
             })?
         };
 
@@ -293,10 +295,10 @@ mod tests {
         assert!(!writer.is_complete());
         assert_eq!(writer.completed_count(), 0);
 
-        let hash0 = writer.write_chunk(0, &[0xAA; 256]).await.unwrap();
+        let _hash0 = writer.write_chunk(0, &[0xAA; 256]).await.unwrap();
         assert_eq!(writer.completed_count(), 1);
 
-        let hash1 = writer.write_chunk(1, &[0xBB; 256]).await.unwrap();
+        let _hash1 = writer.write_chunk(1, &[0xBB; 256]).await.unwrap();
         assert!(writer.is_complete());
 
         writer.finalize().await.unwrap();

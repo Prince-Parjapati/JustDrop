@@ -12,7 +12,6 @@ pub mod endpoint;
 pub mod tls;
 
 use bytes::Bytes;
-use std::net::SocketAddr;
 use thiserror::Error;
 
 /// Well-known QUIC stream IDs.

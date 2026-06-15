@@ -15,21 +15,28 @@ import android.util.Log
  * Connects to a peer's LocalOnlyHotspot using credentials
  * received during the BLE handshake.
  */
-class WifiConnector(private val context: Context) {
-
+class WifiConnector(
+    private val context: Context,
+) {
     companion object {
         private const val TAG = "WifiConnector"
     }
 
     interface Listener {
         fun onConnected(network: Network)
+
         fun onFailed(reason: String)
+
         fun onLost()
     }
 
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
-    fun connect(ssid: String, passphrase: String, listener: Listener) {
+    fun connect(
+        ssid: String,
+        passphrase: String,
+        listener: Listener,
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             connectApi29Plus(ssid, passphrase, listener)
         } else {
@@ -37,52 +44,67 @@ class WifiConnector(private val context: Context) {
         }
     }
 
-    private fun connectApi29Plus(ssid: String, passphrase: String, listener: Listener) {
-        val specifier = WifiNetworkSpecifier.Builder()
-            .setSsid(ssid)
-            .setWpa2Passphrase(passphrase)
-            .build()
+    private fun connectApi29Plus(
+        ssid: String,
+        passphrase: String,
+        listener: Listener,
+    ) {
+        val specifier =
+            WifiNetworkSpecifier
+                .Builder()
+                .setSsid(ssid)
+                .setWpa2Passphrase(passphrase)
+                .build()
 
-        val request = NetworkRequest.Builder()
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .setNetworkSpecifier(specifier)
-            .build()
+        val request =
+            NetworkRequest
+                .Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .setNetworkSpecifier(specifier)
+                .build()
 
         val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-        val callback = object : ConnectivityManager.NetworkCallback() {
-            override fun onAvailable(network: Network) {
-                Log.i(TAG, "Connected to peer hotspot: $ssid")
-                // Bind process to this network for QUIC traffic
-                cm.bindProcessToNetwork(network)
-                listener.onConnected(network)
-            }
+        val callback =
+            object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    Log.i(TAG, "Connected to peer hotspot: $ssid")
+                    // Bind process to this network for QUIC traffic
+                    cm.bindProcessToNetwork(network)
+                    listener.onConnected(network)
+                }
 
-            override fun onUnavailable() {
-                Log.e(TAG, "Peer hotspot unavailable: $ssid")
-                listener.onFailed("Network unavailable")
-            }
+                override fun onUnavailable() {
+                    Log.e(TAG, "Peer hotspot unavailable: $ssid")
+                    listener.onFailed("Network unavailable")
+                }
 
-            override fun onLost(network: Network) {
-                Log.w(TAG, "Lost connection to peer hotspot: $ssid")
-                cm.bindProcessToNetwork(null)
-                listener.onLost()
+                override fun onLost(network: Network) {
+                    Log.w(TAG, "Lost connection to peer hotspot: $ssid")
+                    cm.bindProcessToNetwork(null)
+                    listener.onLost()
+                }
             }
-        }
 
         networkCallback = callback
         cm.requestNetwork(request, callback)
     }
 
     @Suppress("DEPRECATION")
-    private fun connectLegacy(ssid: String, passphrase: String, listener: Listener) {
-        val wifiManager = context.applicationContext
-            .getSystemService(Context.WIFI_SERVICE) as WifiManager
+    private fun connectLegacy(
+        ssid: String,
+        passphrase: String,
+        listener: Listener,
+    ) {
+        val wifiManager =
+            context.applicationContext
+                .getSystemService(Context.WIFI_SERVICE) as WifiManager
 
-        val config = WifiConfiguration().apply {
-            SSID = "\"$ssid\""
-            preSharedKey = "\"$passphrase\""
-        }
+        val config =
+            WifiConfiguration().apply {
+                SSID = "\"$ssid\""
+                preSharedKey = "\"$passphrase\""
+            }
 
         val netId = wifiManager.addNetwork(config)
         if (netId == -1) {

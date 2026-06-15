@@ -32,18 +32,20 @@ fun TransferSheet(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(24.dp),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Drag handle
         Box(
-            modifier = Modifier
-                .width(40.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+            modifier =
+                Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -78,9 +80,10 @@ fun TransferSheet(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
-            ),
+            colors =
+                CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 fileNames.take(5).forEach { fileName ->
@@ -88,13 +91,14 @@ fun TransferSheet(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier.padding(vertical = 4.dp),
                     ) {
-                        val icon = when {
-                            fileName.endsWith(".jpg") || fileName.endsWith(".png") -> Icons.Default.Image
-                            fileName.endsWith(".mp4") || fileName.endsWith(".mov") -> Icons.Default.VideoFile
-                            fileName.endsWith(".pdf") -> Icons.Default.PictureAsPdf
-                            fileName.endsWith(".zip") -> Icons.Default.FolderZip
-                            else -> Icons.Default.InsertDriveFile
-                        }
+                        val icon =
+                            when {
+                                fileName.endsWith(".jpg") || fileName.endsWith(".png") -> Icons.Default.Image
+                                fileName.endsWith(".mp4") || fileName.endsWith(".mov") -> Icons.Default.VideoFile
+                                fileName.endsWith(".pdf") -> Icons.Default.PictureAsPdf
+                                fileName.endsWith(".zip") -> Icons.Default.FolderZip
+                                else -> Icons.Default.InsertDriveFile
+                            }
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
@@ -175,9 +179,10 @@ fun TransferProgressCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -219,25 +224,28 @@ fun TransferProgressCard(
             )
 
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(8.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .height(8.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
             ) {
                 Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedProgress)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.secondary,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth(animatedProgress)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(
+                                Brush.horizontalGradient(
+                                    colors =
+                                        listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.secondary,
+                                        ),
                                 ),
                             ),
-                        ),
                 )
             }
 

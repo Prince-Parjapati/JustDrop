@@ -7,7 +7,6 @@ import android.app.Application
  * creates notification channels on startup.
  */
 class JustDropApp : Application() {
-
     companion object {
         /**
          * Whether the JustDrop foreground service is currently running.

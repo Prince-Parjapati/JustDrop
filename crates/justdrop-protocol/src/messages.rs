@@ -4,7 +4,7 @@
 //! then encrypted and framed by the transport layer.
 
 use justdrop_core::types::{
-    ChunkAck, ChunkId, Sha256Hash, TransferManifest, TransferResponse, TransferId,
+    ChunkAck, ChunkId, Sha256Hash, TransferManifest, TransferResponse,
 };
 use serde::{Deserialize, Serialize};
 
@@ -64,9 +64,7 @@ pub enum Message {
     },
 
     /// Cancel the transfer.
-    Cancel {
-        reason: String,
-    },
+    Cancel { reason: String },
 
     /// Keepalive ping.
     Ping,
@@ -94,8 +92,7 @@ impl Message {
 
     /// Serialize this message to bytes (tag + bincode payload).
     pub fn encode(&self) -> Result<Vec<u8>, String> {
-        let payload =
-            bincode::serialize(self).map_err(|e| format!("serialization failed: {e}"))?;
+        let payload = bincode::serialize(self).map_err(|e| format!("serialization failed: {e}"))?;
 
         let mut buf = Vec::with_capacity(1 + payload.len());
         buf.push(self.tag());
@@ -111,8 +108,7 @@ impl Message {
 
         // The tag is embedded in the bincode serialization of the enum,
         // so we deserialize the whole thing.
-        bincode::deserialize(data)
-            .map_err(|e| format!("deserialization failed: {e}"))
+        bincode::deserialize(data).map_err(|e| format!("deserialization failed: {e}"))
     }
 
     /// Check if this is a data-bearing message (for bandwidth tracking).
@@ -131,7 +127,7 @@ impl Message {
 
 /// Serde helper for Vec<u8> fields to use efficient byte serialization.
 mod serde_bytes {
-    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+    use serde::{Deserializer, Serializer};
 
     pub fn serialize<S>(bytes: &Vec<u8>, serializer: S) -> Result<S::Ok, S::Error>
     where

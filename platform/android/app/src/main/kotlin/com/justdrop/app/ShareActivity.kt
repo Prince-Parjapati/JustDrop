@@ -14,7 +14,6 @@ import org.json.JSONArray
  * and initiates the transfer via the Rust engine.
  */
 class ShareActivity : ComponentActivity() {
-
     companion object {
         private const val TAG = "ShareActivity"
         private const val REQUEST_DEVICE_PICK = 1001
@@ -49,7 +48,9 @@ class ShareActivity : ComponentActivity() {
 
         // Check for Android 13+ nearby devices permission
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-            if (checkSelfPermission(android.Manifest.permission.NEARBY_WIFI_DEVICES) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            if (checkSelfPermission(android.Manifest.permission.NEARBY_WIFI_DEVICES) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            ) {
                 requestPermissions(arrayOf(android.Manifest.permission.NEARBY_WIFI_DEVICES), 1002)
                 return
             }
@@ -58,7 +59,11 @@ class ShareActivity : ComponentActivity() {
         showDevicePicker()
     }
 
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         if (requestCode == 1002) {
             // Proceed regardless, discovery might still work if network allows it
@@ -71,7 +76,11 @@ class ShareActivity : ComponentActivity() {
         startActivityForResult(pickerIntent, REQUEST_DEVICE_PICK)
     }
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    override fun onActivityResult(
+        requestCode: Int,
+        resultCode: Int,
+        data: Intent?,
+    ) {
         super.onActivityResult(requestCode, resultCode, data)
 
         if (requestCode == REQUEST_DEVICE_PICK && resultCode == RESULT_OK) {
@@ -92,18 +101,21 @@ class ShareActivity : ComponentActivity() {
         finish()
     }
 
-    private fun extractUris(intent: Intent): List<Uri> {
-        return when (intent.action) {
+    private fun extractUris(intent: Intent): List<Uri> =
+        when (intent.action) {
             Intent.ACTION_SEND -> {
                 val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 listOfNotNull(uri)
             }
+
             Intent.ACTION_SEND_MULTIPLE -> {
                 intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM) ?: emptyList()
             }
-            else -> emptyList()
+
+            else -> {
+                emptyList()
+            }
         }
-    }
 
     private fun resolveUri(uri: Uri): String? {
         return try {

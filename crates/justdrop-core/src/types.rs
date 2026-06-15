@@ -107,7 +107,10 @@ impl TransferManifest {
 
     /// Total number of chunks across all files.
     pub fn total_chunks(&self) -> u64 {
-        self.files.iter().map(|f| f.chunk_count(self.chunk_size)).sum()
+        self.files
+            .iter()
+            .map(|f| f.chunk_count(self.chunk_size))
+            .sum()
     }
 }
 
@@ -132,7 +135,7 @@ impl FileEntry {
         if self.size == 0 {
             return 1; // Empty files still get one chunk
         }
-        (self.size + chunk_size as u64 - 1) / chunk_size as u64
+        self.size.div_ceil(chunk_size as u64)
     }
 }
 
@@ -262,8 +265,7 @@ pub enum TransferDirection {
 pub type ProgressCallback = Box<dyn Fn(TransferProgress) + Send + Sync>;
 
 /// Callback type for incoming transfer requests (returns accept/reject).
-pub type TransferRequestCallback =
-    Box<dyn Fn(TransferManifest) -> TransferResponse + Send + Sync>;
+pub type TransferRequestCallback = Box<dyn Fn(TransferManifest) -> TransferResponse + Send + Sync>;
 
 /// Detect the current platform.
 pub fn current_platform() -> Platform {
@@ -374,7 +376,10 @@ mod tests {
     #[test]
     fn effective_chunk_size_scales() {
         // Below threshold: same size
-        assert_eq!(effective_chunk_size(500 * 1024 * 1024, DEFAULT_CHUNK_SIZE), DEFAULT_CHUNK_SIZE);
+        assert_eq!(
+            effective_chunk_size(500 * 1024 * 1024, DEFAULT_CHUNK_SIZE),
+            DEFAULT_CHUNK_SIZE
+        );
         // Above threshold: doubled
         assert_eq!(
             effective_chunk_size(2 * 1024 * 1024 * 1024, DEFAULT_CHUNK_SIZE),

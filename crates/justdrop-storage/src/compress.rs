@@ -4,7 +4,7 @@
 //! Chunks are compressed individually so they can be decompressed
 //! independently for resume support.
 
-use std::io::{Read, Write};
+use std::io::Read;
 
 /// Default zstd compression level. Level 3 provides a good
 /// balance of speed and ratio for real-time file transfer.
@@ -12,14 +12,13 @@ const DEFAULT_LEVEL: i32 = 3;
 
 /// Compress a chunk of data using zstd.
 pub fn compress(data: &[u8]) -> Result<Vec<u8>, CompressionError> {
-    zstd::encode_all(data, DEFAULT_LEVEL)
-        .map_err(|e| CompressionError::Compress(e.to_string()))
+    zstd::encode_all(data, DEFAULT_LEVEL).map_err(|e| CompressionError::Compress(e.to_string()))
 }
 
 /// Decompress a zstd-compressed chunk.
 pub fn decompress(data: &[u8], max_size: usize) -> Result<Vec<u8>, CompressionError> {
-    let mut decoder = zstd::Decoder::new(data)
-        .map_err(|e| CompressionError::Decompress(e.to_string()))?;
+    let decoder =
+        zstd::Decoder::new(data).map_err(|e| CompressionError::Decompress(e.to_string()))?;
 
     let mut buf = Vec::new();
     let mut limited = decoder.take(max_size as u64 + 1);

@@ -20,9 +20,10 @@ use std::fmt;
 ///
 /// Any state can transition to `Blocked`.
 /// `Blocked` can only transition back to `Unknown` (full reset).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum TrustLevel {
     /// Device has never been seen or was explicitly reset.
+    #[default]
     Unknown,
     /// Device was accepted at least once. May auto-connect with reduced prompts.
     Trusted,
@@ -44,7 +45,7 @@ impl TrustLevel {
     }
 
     /// Deserialize from SQLite string.
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse_str(s: &str) -> Self {
         match s {
             "trusted" => TrustLevel::Trusted,
             "favorite" => TrustLevel::Favorite,
@@ -98,12 +99,6 @@ impl fmt::Display for TrustLevel {
     }
 }
 
-impl Default for TrustLevel {
-    fn default() -> Self {
-        TrustLevel::Unknown
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -142,10 +137,7 @@ mod tests {
             TrustLevel::Blocked.transition_to(TrustLevel::Unknown),
             Some(TrustLevel::Unknown)
         );
-        assert_eq!(
-            TrustLevel::Blocked.transition_to(TrustLevel::Trusted),
-            None
-        );
+        assert_eq!(TrustLevel::Blocked.transition_to(TrustLevel::Trusted), None);
         assert_eq!(
             TrustLevel::Blocked.transition_to(TrustLevel::Favorite),
             None
@@ -188,7 +180,7 @@ mod tests {
             TrustLevel::Favorite,
             TrustLevel::Blocked,
         ] {
-            assert_eq!(TrustLevel::from_str(level.as_str()), level);
+            assert_eq!(TrustLevel::parse_str(level.as_str()), level);
         }
     }
 }

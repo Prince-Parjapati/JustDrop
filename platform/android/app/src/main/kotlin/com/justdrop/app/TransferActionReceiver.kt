@@ -12,12 +12,14 @@ import android.util.Log
  * forwards the decision to the Rust engine via JNI.
  */
 class TransferActionReceiver : BroadcastReceiver() {
-
     companion object {
         private const val TAG = "TransferAction"
     }
 
-    override fun onReceive(context: Context, intent: Intent) {
+    override fun onReceive(
+        context: Context,
+        intent: Intent,
+    ) {
         val transferId = intent.getIntExtra("transfer_id", -1)
         if (transferId == -1) return
 
@@ -26,6 +28,7 @@ class TransferActionReceiver : BroadcastReceiver() {
                 Log.i(TAG, "User accepted transfer $transferId")
                 JustBridge.acceptTransfer(transferId.toString())
             }
+
             "com.justdrop.ACTION_REJECT" -> {
                 Log.i(TAG, "User rejected transfer $transferId")
                 JustBridge.rejectTransfer(transferId.toString())
@@ -33,7 +36,8 @@ class TransferActionReceiver : BroadcastReceiver() {
         }
 
         // Dismiss the notification
-        val nm = context.getSystemService(Context.NOTIFICATION_SERVICE)
+        val nm =
+            context.getSystemService(Context.NOTIFICATION_SERVICE)
                 as android.app.NotificationManager
         nm.cancel(2000 + transferId)
     }

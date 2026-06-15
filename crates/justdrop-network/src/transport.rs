@@ -3,15 +3,15 @@
 //! Provides framed read/write of length-prefixed encrypted messages
 //! over a TCP stream using the established Noise session.
 
-use bytes::{Buf, BufMut, BytesMut};
-use justdrop_core::error::{NetworkError, SecurityError};
+use bytes::{Buf, BytesMut};
+use justdrop_core::error::NetworkError;
 use justdrop_core::types::MAX_MESSAGE_SIZE;
 use justdrop_security::NoiseSession;
 use std::sync::Arc;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
-use tracing::{debug, trace, warn};
+use tracing::trace;
 
 /// Frame header size: 4 bytes for length.
 const FRAME_HEADER_SIZE: usize = 4;
@@ -41,7 +41,7 @@ impl SecureTransport {
             let mut session = self.session.lock().await;
             session
                 .encrypt(plaintext)
-                .map_err(|e| NetworkError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?
+                .map_err(|e| NetworkError::Io(std::io::Error::other(e.to_string())))?
         };
 
         let frame_len = ciphertext.len() as u32;
@@ -54,7 +54,11 @@ impl SecureTransport {
             .await
             .map_err(NetworkError::Io)?;
 
-        trace!(plaintext_len = plaintext.len(), frame_len = frame.len(), "sent encrypted frame");
+        trace!(
+            plaintext_len = plaintext.len(),
+            frame_len = frame.len(),
+            "sent encrypted frame"
+        );
         Ok(())
     }
 
@@ -113,10 +117,14 @@ impl SecureTransport {
             let mut session = self.session.lock().await;
             session
                 .decrypt(&ciphertext)
-                .map_err(|e| NetworkError::Io(std::io::Error::new(std::io::ErrorKind::Other, e.to_string())))?
+                .map_err(|e| NetworkError::Io(std::io::Error::other(e.to_string())))?
         };
 
-        trace!(ciphertext_len = frame_len, plaintext_len = plaintext.len(), "received encrypted frame");
+        trace!(
+            ciphertext_len = frame_len,
+            plaintext_len = plaintext.len(),
+            "received encrypted frame"
+        );
         Ok(Some(plaintext))
     }
 
@@ -198,10 +206,14 @@ mod tests {
             // Use a dummy session - we test raw operations here
             let mut len_buf = [0u8; 4];
             let mut reader = tokio::io::BufReader::new(stream);
-            tokio::io::AsyncReadExt::read_exact(&mut reader, &mut len_buf).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut reader, &mut len_buf)
+                .await
+                .unwrap();
             let len = u32::from_be_bytes(len_buf) as usize;
             let mut buf = vec![0u8; len];
-            tokio::io::AsyncReadExt::read_exact(&mut reader, &mut buf).await.unwrap();
+            tokio::io::AsyncReadExt::read_exact(&mut reader, &mut buf)
+                .await
+                .unwrap();
             buf
         });
 
@@ -221,9 +233,10 @@ mod tests {
         // We can't easily create a NoiseSession without a handshake,
         // so we'll test the raw path which doesn't use the session.
         // For full integration tests, see justdrop-protocol.
-        
+
         // Build a quick handshake pair
-        let params: snow::params::NoiseParams = "Noise_XX_25519_ChaChaPoly_BLAKE2s".parse().unwrap();
+        let params: snow::params::NoiseParams =
+            "Noise_XX_25519_ChaChaPoly_BLAKE2s".parse().unwrap();
         let builder_i = snow::Builder::new(params.clone());
         let keypair_i = builder_i.generate_keypair().unwrap();
         let builder_r = snow::Builder::new(params.clone());

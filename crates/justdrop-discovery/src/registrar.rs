@@ -3,9 +3,9 @@
 //! Registers a `_justdrop._tcp.local.` service with TXT records containing
 //! the device name, platform, protocol version, and public key fingerprint.
 
-use mdns_sd::{ServiceDaemon, ServiceInfo};
 use justdrop_core::error::DiscoveryError;
 use justdrop_core::types::{current_platform, Fingerprint, PROTOCOL_VERSION};
+use mdns_sd::{ServiceDaemon, ServiceInfo};
 use std::collections::HashMap;
 use tracing::{debug, error, info};
 
@@ -41,11 +41,7 @@ impl ServiceRegistrar {
     /// # Arguments
     /// * `port` — TCP listen port
     /// * `fingerprint` — public key fingerprint for identity verification
-    pub fn register(
-        &mut self,
-        port: u16,
-        fingerprint: &Fingerprint,
-    ) -> Result<(), DiscoveryError> {
+    pub fn register(&mut self, port: u16, fingerprint: &Fingerprint) -> Result<(), DiscoveryError> {
         let mut properties = HashMap::new();
         properties.insert("version".to_string(), PROTOCOL_VERSION.to_string());
         properties.insert("platform".to_string(), current_platform().to_string());

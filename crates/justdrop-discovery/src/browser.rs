@@ -3,11 +3,10 @@
 //! Browses for `_justdrop._tcp.local.` services and maintains a live registry
 //! of discovered peers, emitting events via a broadcast channel.
 
+use justdrop_core::error::DiscoveryError;
+use justdrop_core::types::{DeviceInfo, Fingerprint, Platform};
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use parking_lot::RwLock;
-use justdrop_core::error::DiscoveryError;
-use std::net::Ipv4Addr;
-use justdrop_core::types::{DeviceInfo, Fingerprint, Platform};
 use std::collections::HashMap;
 use std::net::{IpAddr, SocketAddr};
 use std::sync::Arc;
@@ -65,13 +64,10 @@ impl ServiceBrowser {
     ///
     /// # Arguments
     /// * `daemon` — shared mDNS daemon (can be from ServiceRegistrar)
-    pub fn start_browsing(
-        &self,
-        daemon: &ServiceDaemon,
-    ) -> Result<(), DiscoveryError> {
-        let receiver = daemon.browse(&self.service_type).map_err(|e| {
-            DiscoveryError::Browse(format!("failed to start browsing: {e}"))
-        })?;
+    pub fn start_browsing(&self, daemon: &ServiceDaemon) -> Result<(), DiscoveryError> {
+        let receiver = daemon
+            .browse(&self.service_type)
+            .map_err(|e| DiscoveryError::Browse(format!("failed to start browsing: {e}")))?;
 
         let peers = Arc::clone(&self.peers);
         let event_tx = self.event_tx.clone();
@@ -122,7 +118,7 @@ impl ServiceBrowser {
                 let properties = info.get_properties();
                 let fingerprint = properties
                     .get_property_val_str("fingerprint")
-                    .and_then(|s| parse_fingerprint(s))
+                    .and_then(parse_fingerprint)
                     .unwrap_or([0u8; 32]);
 
                 let platform = properties

@@ -48,7 +48,11 @@ pub unsafe extern "C" fn justdrop_android_set_data_dir(
 }
 
 #[cfg(target_os = "android")]
-use jni::{JNIEnv, objects::{JClass, JString}, sys::{jint, jstring}};
+use jni::{
+    objects::{JClass, JString},
+    sys::{jint, jstring},
+    JNIEnv,
+};
 
 #[cfg(target_os = "android")]
 #[no_mangle]
@@ -66,7 +70,10 @@ pub extern "system" fn Java_com_justdrop_app_JustBridge_init<'local>(
         None
     };
 
-    let ptr = config_path_c_str.as_ref().map(|s| s.as_ptr()).unwrap_or(std::ptr::null());
+    let ptr = config_path_c_str
+        .as_ref()
+        .map(|s| s.as_ptr())
+        .unwrap_or(std::ptr::null());
     unsafe { crate::justdrop_init(ptr) as jint }
 }
 
@@ -101,7 +108,7 @@ pub extern "system" fn Java_com_justdrop_app_JustBridge_getPeers<'local>(
     let c_str = unsafe { std::ffi::CStr::from_ptr(ptr) };
     let string = c_str.to_string_lossy().into_owned();
     unsafe { crate::justdrop_free_string(ptr) };
-    
+
     match env.new_string(string) {
         Ok(s) => s.into_raw(),
         Err(_) => std::ptr::null_mut(),

@@ -7,20 +7,17 @@ uniffi::include_scaffolding!("justdrop");
 
 use justdrop_core::config::Config;
 use justdrop_core::trust::TrustLevel as CoreTrustLevel;
-use justdrop_engine::events::{EngineEvent, EngineEventHandler};
-use justdrop_engine::peer::{DiscoverySource, Peer as EnginePeer};
-use justdrop_engine::session::Direction;
 use justdrop_engine::engine::{Engine, EngineConfig, EngineError as CoreEngineError};
-use parking_lot::RwLock;
+use justdrop_engine::events::{EngineEvent, EngineEventHandler};
+use justdrop_engine::peer::Peer as EnginePeer;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::info;
 use uuid::Uuid;
 
 // Legacy modules retained for backward compat during migration
 pub mod android;
-pub mod macos;
 pub mod legacy_c_abi;
+pub mod macos;
 
 // ── UniFFI Type Mappings ────────────────────────────────────────────
 
@@ -138,10 +135,7 @@ impl From<EnginePeer> for PeerInfo {
             trust: p.trust.into(),
             address: p.addr.map(|a| a.to_string()),
             rssi: p.rssi,
-            battery: match p.battery {
-                Some(b) => Some(b),
-                None => None,
-            },
+            battery: p.battery,
         }
     }
 }
@@ -288,7 +282,8 @@ impl EngineEventHandler for EventBridge {
                     .iter()
                     .map(|p| p.to_string_lossy().to_string())
                     .collect();
-                self.handler.on_transfer_completed(transfer_id.to_string(), paths);
+                self.handler
+                    .on_transfer_completed(transfer_id.to_string(), paths);
             }
             EngineEvent::TransferFailed { transfer_id, error } => {
                 self.handler
@@ -337,8 +332,9 @@ impl JustDropEngine {
             .try_init();
 
         let config = match config_path {
-            Some(path) => Config::load(std::path::Path::new(&path))
-                .map_err(|_| JustDropError::InitFailed)?,
+            Some(path) => {
+                Config::load(std::path::Path::new(&path)).map_err(|_| JustDropError::InitFailed)?
+            }
             None => Config::default(),
         };
 
@@ -374,19 +370,31 @@ impl JustDropEngine {
     }
 
     pub fn visible_peers(&self) -> Vec<PeerInfo> {
-        self.inner.visible_peers().into_iter().map(|p| p.into()).collect()
+        self.inner
+            .visible_peers()
+            .into_iter()
+            .map(|p| p.into())
+            .collect()
     }
 
     pub fn peer_count(&self) -> u32 {
         self.inner.peer_count() as u32
     }
 
-    pub fn set_peer_trust(&self, fingerprint: String, level: TrustLevel) -> Result<(), JustDropError> {
+    pub fn set_peer_trust(
+        &self,
+        fingerprint: String,
+        level: TrustLevel,
+    ) -> Result<(), JustDropError> {
         self.inner.set_peer_trust(&fingerprint, level.into())?;
         Ok(())
     }
 
-    pub fn send_files(&self, device_id: String, file_paths: Vec<String>) -> Result<String, JustDropError> {
+    pub fn send_files(
+        &self,
+        device_id: String,
+        file_paths: Vec<String>,
+    ) -> Result<String, JustDropError> {
         let paths: Vec<PathBuf> = file_paths.into_iter().map(PathBuf::from).collect();
         let id = self.inner.send_files(&device_id, paths)?;
         Ok(id.to_string())
@@ -398,7 +406,11 @@ impl JustDropEngine {
         Ok(())
     }
 
-    pub fn reject_transfer(&self, transfer_id: String, reason: String) -> Result<(), JustDropError> {
+    pub fn reject_transfer(
+        &self,
+        transfer_id: String,
+        reason: String,
+    ) -> Result<(), JustDropError> {
         let id = Uuid::parse_str(&transfer_id).map_err(|_| JustDropError::InvalidArgument)?;
         self.inner.reject_transfer(id, &reason)?;
         Ok(())

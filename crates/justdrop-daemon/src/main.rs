@@ -9,9 +9,7 @@ use justdrop_core::config::Config;
 use justdrop_core::types::format_bytes;
 use justdrop_discovery::{PeerEvent, ServiceBrowser, ServiceRegistrar};
 use justdrop_network::TransferListener;
-use justdrop_protocol::{
-    IncomingTransferDecision, RecvTransfer, SendTransfer, TransferEvent,
-};
+use justdrop_protocol::{IncomingTransferDecision, RecvTransfer, SendTransfer, TransferEvent};
 use justdrop_security::IdentityKeys;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -66,10 +64,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     // Initialize tracing
-    let log_level = cli
-        .log_level
-        .as_deref()
-        .unwrap_or("info");
+    let log_level = cli.log_level.as_deref().unwrap_or("info");
 
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -169,7 +164,7 @@ async fn run_daemon(config: Config, identity: Arc<IdentityKeys>) -> Result<()> {
     });
 
     // Spawn event logger
-    let event_logger = tokio::spawn(async move {
+    let _event_logger = tokio::spawn(async move {
         while let Some(event) = event_rx.recv().await {
             match event {
                 TransferEvent::IncomingRequest {
@@ -209,10 +204,7 @@ async fn run_daemon(config: Config, identity: Arc<IdentityKeys>) -> Result<()> {
                         "✅ transfer complete"
                     );
                 }
-                TransferEvent::Failed {
-                    transfer_id,
-                    error,
-                } => {
+                TransferEvent::Failed { transfer_id, error } => {
                     error!(transfer_id = %transfer_id, error = %error, "❌ transfer failed");
                 }
                 TransferEvent::Cancelled { transfer_id } => {
@@ -223,7 +215,7 @@ async fn run_daemon(config: Config, identity: Arc<IdentityKeys>) -> Result<()> {
     });
 
     // Accept incoming connections
-    let recv_handler = RecvTransfer::new(config.clone(), Arc::clone(&identity));
+    let _recv_handler = RecvTransfer::new(config.clone(), Arc::clone(&identity));
 
     loop {
         match listener.accept().await {
@@ -236,17 +228,12 @@ async fn run_daemon(config: Config, identity: Arc<IdentityKeys>) -> Result<()> {
                 // Auto-accept for daemon mode (configurable)
                 let auto_accept = config.security.auto_accept_all;
                 if auto_accept {
-                    let _ = decision_tx
-                        .send(IncomingTransferDecision::Accept)
-                        .await;
+                    let _ = decision_tx.send(IncomingTransferDecision::Accept).await;
                 }
 
                 let recv = RecvTransfer::new(config.clone(), Arc::clone(&identity));
                 tokio::spawn(async move {
-                    if let Err(e) = recv
-                        .handle_incoming(stream, decision_rx, event_tx)
-                        .await
-                    {
+                    if let Err(e) = recv.handle_incoming(stream, decision_rx, event_tx).await {
                         error!(error = %e, "incoming transfer failed");
                     }
                 });
@@ -282,7 +269,8 @@ async fn run_send(
     let peer = peers
         .iter()
         .find(|p| p.name.contains(peer_name) || p.id.contains(peer_name))
-        .context(format!("peer '{peer_name}' not found. Available: {:?}",
+        .context(format!(
+            "peer '{peer_name}' not found. Available: {:?}",
             peers.iter().map(|p| &p.name).collect::<Vec<_>>()
         ))?;
 
@@ -344,7 +332,10 @@ async fn run_peers(config: Config, identity: Arc<IdentityKeys>) -> Result<()> {
     if peers.is_empty() {
         println!("No peers found.");
     } else {
-        println!("{:<20} {:<20} {:<15} {}", "NAME", "ADDRESS", "PLATFORM", "ID");
+        println!(
+            "{:<20} {:<20} {:<15} ID",
+            "NAME", "ADDRESS", "PLATFORM"
+        );
         println!("{}", "-".repeat(70));
         for peer in &peers {
             println!(

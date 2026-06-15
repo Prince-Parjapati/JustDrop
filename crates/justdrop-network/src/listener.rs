@@ -8,7 +8,7 @@ use justdrop_core::error::NetworkError;
 use socket2::{Domain, Protocol, Socket, Type};
 use std::net::SocketAddr;
 use tokio::net::{TcpListener, TcpStream};
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 
 /// A tuned TCP listener for receiving incoming connections.
 pub struct TransferListener {
@@ -27,27 +27,27 @@ impl TransferListener {
             })?;
 
         // Create socket with socket2 for fine-grained tuning
-        let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).map_err(
-            |e| NetworkError::BindFailed {
+        let socket = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP)).map_err(|e| {
+            NetworkError::BindFailed {
                 port: config.listen_port,
                 source: e,
-            },
-        )?;
+            }
+        })?;
 
         // Socket options for performance
-        socket.set_reuse_address(true).map_err(|e| {
-            NetworkError::BindFailed {
+        socket
+            .set_reuse_address(true)
+            .map_err(|e| NetworkError::BindFailed {
                 port: config.listen_port,
                 source: e,
-            }
-        })?;
+            })?;
 
-        socket.set_nodelay(config.tcp_nodelay).map_err(|e| {
-            NetworkError::BindFailed {
+        socket
+            .set_nodelay(config.tcp_nodelay)
+            .map_err(|e| NetworkError::BindFailed {
                 port: config.listen_port,
                 source: e,
-            }
-        })?;
+            })?;
 
         socket
             .set_send_buffer_size(config.send_buffer_size)
@@ -76,25 +76,26 @@ impl TransferListener {
             source: e,
         })?;
 
-        socket.set_nonblocking(true).map_err(|e| {
-            NetworkError::BindFailed {
+        socket
+            .set_nonblocking(true)
+            .map_err(|e| NetworkError::BindFailed {
                 port: config.listen_port,
                 source: e,
-            }
-        })?;
+            })?;
 
         let std_listener: std::net::TcpListener = socket.into();
-        let listener = TcpListener::from_std(std_listener).map_err(|e| {
-            NetworkError::BindFailed {
+        let listener =
+            TcpListener::from_std(std_listener).map_err(|e| NetworkError::BindFailed {
                 port: config.listen_port,
                 source: e,
-            }
-        })?;
+            })?;
 
-        let local_addr = listener.local_addr().map_err(|e| NetworkError::BindFailed {
-            port: config.listen_port,
-            source: e,
-        })?;
+        let local_addr = listener
+            .local_addr()
+            .map_err(|e| NetworkError::BindFailed {
+                port: config.listen_port,
+                source: e,
+            })?;
 
         info!(addr = %local_addr, "TCP listener bound");
 

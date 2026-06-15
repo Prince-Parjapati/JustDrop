@@ -16,4 +16,3 @@ pub use hash::{hash_bytes, hash_hex, IncrementalHasher};
 pub use integrity::{verify_chunk, verify_file};
 pub use resume::{ResumeManager, TransferResumeState};
 pub use writer::ChunkWriter;
-

@@ -211,11 +211,7 @@ mod tests {
 
     #[test]
     fn cancel_is_terminal() {
-        let mut session = TransferSession::new_send(
-            "abc".into(),
-            "Dev".into(),
-            vec![],
-        );
+        let mut session = TransferSession::new_send("abc".into(), "Dev".into(), vec![]);
         session.cancel();
         assert!(session.is_terminal());
         assert_eq!(session.state, TransferState::Cancelled);

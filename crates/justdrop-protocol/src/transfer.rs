@@ -5,14 +5,13 @@
 
 use crate::codec::ProtocolCodec;
 use crate::messages::Message;
-use crate::state::TransferStateMachine;
 use justdrop_core::config::Config;
 use justdrop_core::error::ProtocolError;
 use justdrop_core::types::*;
-use justdrop_network::{connect, SecureTransport, TransferListener};
+use justdrop_network::{connect, SecureTransport};
 use justdrop_security::{IdentityKeys, NoiseSession};
 use justdrop_storage::{
-    hash_file, verify_chunk, ChunkWriter, FileChunker, ResumeManager, TransferResumeState,
+    hash_file, ChunkWriter, FileChunker, ResumeManager, TransferResumeState,
 };
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -21,7 +20,7 @@ use std::time::Instant;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{error, info, warn};
 
 /// Events emitted by the transfer manager.
 #[derive(Debug, Clone)]
@@ -256,9 +255,7 @@ impl SendTransfer {
                 info!("transfer accepted");
                 HashSet::new()
             }
-            Some(Message::TransferResponse(TransferResponse::ResumeAt {
-                received_chunks,
-            })) => {
+            Some(Message::TransferResponse(TransferResponse::ResumeAt { received_chunks })) => {
                 let total_chunks = manifest.total_chunks();
                 let completed =
                     ResumeManager::decode_received_bitmap(&received_chunks, total_chunks);
@@ -292,8 +289,7 @@ impl SendTransfer {
                     chunk_offset,
                 };
 
-                let global_offset =
-                    global_chunk_offset(&manifest, file_idx as u32, chunk_offset);
+                let global_offset = global_chunk_offset(&manifest, file_idx as u32, chunk_offset);
                 if skip_chunks.contains(&global_offset) {
                     bytes_sent += effective_cs as u64;
                     continue;
@@ -518,8 +514,10 @@ impl RecvTransfer {
             writers.push(Some(writer));
         }
 
-        let mut bytes_received: u64 =
-            resume_state.as_ref().map(|s| s.bytes_transferred).unwrap_or(0);
+        let mut bytes_received: u64 = resume_state
+            .as_ref()
+            .map(|s| s.bytes_transferred)
+            .unwrap_or(0);
         let total_bytes = manifest.total_size;
         let start_time = Instant::now();
 
@@ -529,9 +527,7 @@ impl RecvTransfer {
                     let writer = writers
                         .get_mut(id.file_index as usize)
                         .and_then(|w| w.as_mut())
-                        .ok_or_else(|| {
-                            ProtocolError::Serialization("invalid file index".into())
-                        })?;
+                        .ok_or_else(|| ProtocolError::Serialization("invalid file index".into()))?;
 
                     let sha256 = writer
                         .write_chunk(id.chunk_offset, &data)
@@ -614,7 +610,9 @@ impl RecvTransfer {
                     warn!(transfer_id = %transfer_id, reason = %reason, "cancelled by sender");
                     self.save_resume_state(transfer_id, &manifest, &writers, bytes_received)
                         .await;
-                    let _ = event_tx.send(TransferEvent::Cancelled { transfer_id }).await;
+                    let _ = event_tx
+                        .send(TransferEvent::Cancelled { transfer_id })
+                        .await;
                     return Err(ProtocolError::Cancelled { reason });
                 }
                 None => {
@@ -651,16 +649,15 @@ impl RecvTransfer {
             .iter()
             .enumerate()
             .filter_map(|(i, w)| {
-                w.as_ref().map(|writer| {
-                    justdrop_storage::resume::FileResumeState {
+                w.as_ref()
+                    .map(|writer| justdrop_storage::resume::FileResumeState {
                         file_index: i as u32,
                         dest_path: manifest.files[i].relative_path.clone(),
                         temp_path: String::new(),
                         file_size: manifest.files[i].size,
                         chunk_size: manifest.chunk_size,
                         completed_chunks: writer.completed_chunks().clone(),
-                    }
-                })
+                    })
             })
             .collect();
 

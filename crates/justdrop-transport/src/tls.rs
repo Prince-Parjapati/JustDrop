@@ -5,7 +5,6 @@
 //! Peer authentication is done via certificate fingerprint pinning
 //! exchanged during the BLE handshake, NOT via a CA chain.
 
-use ring::rand::SystemRandom;
 use rustls::pki_types::{CertificateDer, PrivateKeyDer, PrivatePkcs8KeyDer};
 use std::sync::Arc;
 use tracing::debug;

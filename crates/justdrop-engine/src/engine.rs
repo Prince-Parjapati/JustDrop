@@ -4,8 +4,8 @@
 //! Platform layers interact with the engine through commands (in) and events (out).
 
 use crate::events::{EngineEvent, EngineEventHandler};
-use crate::peer::{DiscoverySource, Peer};
-use crate::session::{Direction, TransferSession};
+use crate::peer::Peer;
+use crate::session::TransferSession;
 use justdrop_core::config::Config;
 use justdrop_core::db::Database;
 use justdrop_core::identity::DeviceIdentity;
@@ -15,7 +15,7 @@ use parking_lot::RwLock;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, info};
 
 /// Engine configuration.
 pub struct EngineConfig {
@@ -59,8 +59,8 @@ impl Engine {
         .map_err(|e| EngineError::Init(format!("identity: {e}")))?;
 
         let db_path = engine_config.data_dir.join("justdrop.db");
-        let db = Database::open(&db_path)
-            .map_err(|e| EngineError::Init(format!("database: {e}")))?;
+        let db =
+            Database::open(&db_path).map_err(|e| EngineError::Init(format!("database: {e}")))?;
 
         info!(
             uuid = %identity.uuid,
@@ -171,16 +171,23 @@ impl Engine {
 
     /// Get peer count.
     pub fn peer_count(&self) -> usize {
-        self.peers.read().values().filter(|p| p.is_visible()).count()
+        self.peers
+            .read()
+            .values()
+            .filter(|p| p.is_visible())
+            .count()
     }
 
     // ── Trust Management ────────────────────────────────────────────
 
     /// Set trust level for a peer.
     pub fn set_peer_trust(&self, fingerprint: &str, level: TrustLevel) -> Result<(), EngineError> {
-        let peer = self.peers.read().values().find(|p| {
-            p.fingerprint.as_deref() == Some(fingerprint)
-        }).cloned();
+        let peer = self
+            .peers
+            .read()
+            .values()
+            .find(|p| p.fingerprint.as_deref() == Some(fingerprint))
+            .cloned();
 
         let (name, platform) = peer
             .map(|p| (p.name, format!("{:?}", p.platform)))
@@ -192,7 +199,10 @@ impl Engine {
 
         // If blocked, remove from visible peers
         if level.is_blocked() {
-            let device_id = self.peers.read().iter()
+            let device_id = self
+                .peers
+                .read()
+                .iter()
                 .find(|(_, p)| p.fingerprint.as_deref() == Some(fingerprint))
                 .map(|(id, _)| id.clone());
 
@@ -213,14 +223,15 @@ impl Engine {
         device_id: &str,
         paths: Vec<PathBuf>,
     ) -> Result<TransferId, EngineError> {
-        let peer = self.peers.read().get(device_id).cloned()
+        let peer = self
+            .peers
+            .read()
+            .get(device_id)
+            .cloned()
             .ok_or_else(|| EngineError::PeerNotFound(device_id.to_string()))?;
 
-        let session = TransferSession::new_send(
-            peer.fingerprint.unwrap_or_default(),
-            peer.name,
-            paths,
-        );
+        let session =
+            TransferSession::new_send(peer.fingerprint.unwrap_or_default(), peer.name, paths);
         let transfer_id = session.id;
 
         self.sessions.write().insert(transfer_id, session);
@@ -233,7 +244,8 @@ impl Engine {
     /// Accept an incoming transfer.
     pub fn accept_transfer(&self, transfer_id: TransferId) -> Result<(), EngineError> {
         let mut sessions = self.sessions.write();
-        let session = sessions.get_mut(&transfer_id)
+        let _session = sessions
+            .get_mut(&transfer_id)
             .ok_or(EngineError::SessionNotFound(transfer_id))?;
 
         info!(transfer_id = %transfer_id, "transfer accepted");
@@ -242,9 +254,14 @@ impl Engine {
     }
 
     /// Reject an incoming transfer.
-    pub fn reject_transfer(&self, transfer_id: TransferId, reason: &str) -> Result<(), EngineError> {
+    pub fn reject_transfer(
+        &self,
+        transfer_id: TransferId,
+        reason: &str,
+    ) -> Result<(), EngineError> {
         let mut sessions = self.sessions.write();
-        let session = sessions.get_mut(&transfer_id)
+        let session = sessions
+            .get_mut(&transfer_id)
             .ok_or(EngineError::SessionNotFound(transfer_id))?;
 
         session.cancel();
@@ -259,7 +276,8 @@ impl Engine {
     /// Cancel an active transfer.
     pub fn cancel_transfer(&self, transfer_id: TransferId) -> Result<(), EngineError> {
         let mut sessions = self.sessions.write();
-        let session = sessions.get_mut(&transfer_id)
+        let session = sessions
+            .get_mut(&transfer_id)
             .ok_or(EngineError::SessionNotFound(transfer_id))?;
 
         session.cancel();
@@ -273,7 +291,11 @@ impl Engine {
 
     /// Get active transfer count.
     pub fn active_transfer_count(&self) -> usize {
-        self.sessions.read().values().filter(|s| !s.is_terminal()).count()
+        self.sessions
+            .read()
+            .values()
+            .filter(|s| !s.is_terminal())
+            .count()
     }
 
     // ── Lifecycle ───────────────────────────────────────────────────
@@ -383,7 +405,10 @@ mod tests {
         let _ = rx.try_recv();
 
         let fp = "blocked_fingerprint_hex";
-        engine.db.set_trust(fp, "Evil", "Android", TrustLevel::Blocked).unwrap();
+        engine
+            .db
+            .set_trust(fp, "Evil", "Android", TrustLevel::Blocked)
+            .unwrap();
 
         let peer = Peer::from_mdns(
             "Evil".into(),
@@ -429,7 +454,7 @@ mod tests {
         engine.on_peer_discovered(peer);
         let _ = rx.try_recv();
 
-        let tid = engine.send_files("somefingerpr", vec![PathBuf::from("/tmp/f")]);
+        let _tid = engine.send_files("somefingerpr", vec![PathBuf::from("/tmp/f")]);
         // May fail because device_id is truncated fingerprint — that's fine
         // The important test is stop behavior
 

@@ -35,55 +35,62 @@ fun DeviceCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val presenceColor = when (presence) {
-        "Available" -> Color(0xFF55EFC4)
-        "Busy" -> Color(0xFFFF7675)
-        "Receiving" -> Color(0xFFFDCB6E)
-        else -> Color(0xFF636E72)
-    }
+    val presenceColor =
+        when (presence) {
+            "Available" -> Color(0xFF55EFC4)
+            "Busy" -> Color(0xFFFF7675)
+            "Receiving" -> Color(0xFFFDCB6E)
+            else -> Color(0xFF636E72)
+        }
 
-    val platformIcon = when (platform) {
-        "MacOS" -> Icons.Default.Laptop
-        "Android" -> Icons.Default.PhoneAndroid
-        "Windows" -> Icons.Default.DesktopWindows
-        "Linux" -> Icons.Default.Terminal
-        else -> Icons.Default.Devices
-    }
+    val platformIcon =
+        when (platform) {
+            "MacOS" -> Icons.Default.Laptop
+            "Android" -> Icons.Default.PhoneAndroid
+            "Windows" -> Icons.Default.DesktopWindows
+            "Linux" -> Icons.Default.Terminal
+            else -> Icons.Default.Devices
+        }
 
-    val trustBadge = when (trust) {
-        "Favorite" -> "⭐"
-        "Trusted" -> "✓"
-        "Blocked" -> "🚫"
-        else -> null
-    }
+    val trustBadge =
+        when (trust) {
+            "Favorite" -> "⭐"
+            "Trusted" -> "✓"
+            "Blocked" -> "🚫"
+            else -> null
+        }
 
     // Subtle pulse animation for available devices
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseScale by infiniteTransition.animateFloat(
         initialValue = 1f,
         targetValue = if (presence == "Available") 1.05f else 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1200, easing = EaseInOutSine),
-            repeatMode = RepeatMode.Reverse,
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(1200, easing = EaseInOutSine),
+                repeatMode = RepeatMode.Reverse,
+            ),
         label = "pulse_scale",
     )
 
     Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .scale(pulseScale)
-            .clickable(onClick = onClick),
+        modifier =
+            modifier
+                .fillMaxWidth()
+                .scale(pulseScale)
+                .clickable(onClick = onClick),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
     ) {
         Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
+            modifier =
+                Modifier
+                    .padding(16.dp)
+                    .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Platform icon with presence indicator
@@ -96,22 +103,24 @@ fun DeviceCard(
                     Icon(
                         imageVector = platformIcon,
                         contentDescription = platform,
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .size(24.dp),
+                        modifier =
+                            Modifier
+                                .padding(12.dp)
+                                .size(24.dp),
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                     )
                 }
                 // Presence dot
                 Box(
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .size(14.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.surface)
-                        .padding(2.dp)
-                        .clip(CircleShape)
-                        .background(presenceColor),
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(14.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface)
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(presenceColor),
                 )
             }
 
@@ -133,13 +142,14 @@ fun DeviceCard(
                     }
                 }
                 Text(
-                    text = buildString {
-                        append(platform)
-                        if (address != null) {
-                            append(" • ")
-                            append(address)
-                        }
-                    },
+                    text =
+                        buildString {
+                            append(platform)
+                            if (address != null) {
+                                append(" • ")
+                                append(address)
+                            }
+                        },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -162,13 +172,14 @@ fun DeviceCard(
 
 @Composable
 fun SignalStrength(rssi: Int) {
-    val bars = when {
-        rssi > -50 -> 4
-        rssi > -60 -> 3
-        rssi > -70 -> 2
-        rssi > -80 -> 1
-        else -> 0
-    }
+    val bars =
+        when {
+            rssi > -50 -> 4
+            rssi > -60 -> 3
+            rssi > -70 -> 2
+            rssi > -80 -> 1
+            else -> 0
+        }
 
     Row(
         horizontalArrangement = Arrangement.spacedBy(2.dp),
@@ -176,14 +187,18 @@ fun SignalStrength(rssi: Int) {
     ) {
         for (i in 0 until 4) {
             Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height((8 + i * 4).dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(
-                        if (i < bars) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                    ),
+                modifier =
+                    Modifier
+                        .width(4.dp)
+                        .height((8 + i * 4).dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(
+                            if (i < bars) {
+                                MaterialTheme.colorScheme.primary
+                            } else {
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                            },
+                        ),
             )
         }
     }

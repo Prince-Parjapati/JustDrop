@@ -13,7 +13,7 @@ use ring::aead::{self, Nonce, NONCE_LEN};
 use ring::agreement::{self, EphemeralPrivateKey, UnparsedPublicKey};
 use ring::hkdf;
 use ring::rand::SystemRandom;
-use ring::signature::{self, Ed25519KeyPair, KeyPair};
+use ring::signature::{self};
 use tracing::debug;
 
 /// Errors from the crypto layer.
@@ -68,10 +68,9 @@ impl KeyExchangeInitiator {
     ) -> Result<SessionKeys, CryptoError> {
         let peer_key = UnparsedPublicKey::new(&agreement::X25519, peer_public_key);
 
-        let shared_secret = agreement::agree_ephemeral(self.private_key, &peer_key, |secret| {
-            secret.to_vec()
-        })
-        .map_err(|_| CryptoError::KeyExchange)?;
+        let shared_secret =
+            agreement::agree_ephemeral(self.private_key, &peer_key, |secret| secret.to_vec())
+                .map_err(|_| CryptoError::KeyExchange)?;
 
         debug!("X25519 key exchange completed");
         SessionKeys::derive(&shared_secret, is_initiator)
@@ -191,8 +190,7 @@ pub fn verify_signature(
     message: &[u8],
     signature_bytes: &[u8],
 ) -> Result<(), CryptoError> {
-    let peer_key =
-        signature::UnparsedPublicKey::new(&signature::ED25519, public_key);
+    let peer_key = signature::UnparsedPublicKey::new(&signature::ED25519, public_key);
     peer_key
         .verify(message, signature_bytes)
         .map_err(|_| CryptoError::VerificationFailed)
@@ -210,6 +208,7 @@ impl hkdf::KeyType for HkdfLen {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ring::signature::{Ed25519KeyPair, KeyPair};
 
     #[test]
     fn key_exchange_produces_matching_keys() {
@@ -333,7 +332,9 @@ mod tests {
         let initiator = KeyExchangeInitiator::new().unwrap();
         let responder = KeyExchangeInitiator::new().unwrap();
 
-        let init_keys = initiator.complete(&responder.public_key_bytes, true).unwrap();
+        let init_keys = initiator
+            .complete(&responder.public_key_bytes, true)
+            .unwrap();
 
         let mut encryptor = init_keys.encryptor().unwrap();
 

@@ -200,10 +200,7 @@ mod tests {
         let err = NetworkError::Timeout {
             addr: "192.168.1.1:42420".into(),
         };
-        assert_eq!(
-            err.to_string(),
-            "connection timed out to 192.168.1.1:42420"
-        );
+        assert_eq!(err.to_string(), "connection timed out to 192.168.1.1:42420");
     }
 
     #[test]

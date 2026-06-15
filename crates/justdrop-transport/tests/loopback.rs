@@ -48,7 +48,10 @@ async fn loopback_framed_transfer() {
 
     // Signal server we're done
     let _ = done_tx.send(());
-    timeout(Duration::from_secs(5), server_task).await.unwrap().unwrap();
+    timeout(Duration::from_secs(5), server_task)
+        .await
+        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -87,7 +90,10 @@ async fn multiple_streams() {
     }
 
     let _ = done_tx.send(());
-    timeout(Duration::from_secs(5), server_task).await.unwrap().unwrap();
+    timeout(Duration::from_secs(5), server_task)
+        .await
+        .unwrap()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -128,5 +134,8 @@ async fn large_frame_transfer() {
     assert_eq!(&resp[..], b"ok");
 
     let _ = done_tx.send(());
-    timeout(Duration::from_secs(10), server_task).await.unwrap().unwrap();
+    timeout(Duration::from_secs(10), server_task)
+        .await
+        .unwrap()
+        .unwrap();
 }

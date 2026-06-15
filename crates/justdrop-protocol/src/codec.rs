@@ -6,7 +6,7 @@
 use crate::messages::Message;
 use justdrop_core::error::ProtocolError;
 use justdrop_network::SecureTransport;
-use tracing::{debug, trace, warn};
+use tracing::trace;
 
 /// Protocol codec wrapping a `SecureTransport` for message-level I/O.
 pub struct ProtocolCodec {
@@ -21,12 +21,13 @@ impl ProtocolCodec {
 
     /// Send a protocol message (serialized, encrypted, and framed).
     pub async fn send(&mut self, message: &Message) -> Result<(), ProtocolError> {
-        let data = bincode::serialize(message)
-            .map_err(|e| ProtocolError::Serialization(e.to_string()))?;
+        let data =
+            bincode::serialize(message).map_err(|e| ProtocolError::Serialization(e.to_string()))?;
 
-        self.transport.send(&data).await.map_err(|e| {
-            ProtocolError::Serialization(format!("transport send failed: {e}"))
-        })?;
+        self.transport
+            .send(&data)
+            .await
+            .map_err(|e| ProtocolError::Serialization(format!("transport send failed: {e}")))?;
 
         trace!(tag = message.tag(), size = data.len(), "sent message");
         Ok(())
@@ -55,30 +56,34 @@ impl ProtocolCodec {
 
     /// Send a raw handshake message (unencrypted, for Noise handshake).
     pub async fn send_handshake(&mut self, data: &[u8]) -> Result<(), ProtocolError> {
-        self.transport.send_raw(data).await.map_err(|e| {
-            ProtocolError::Serialization(format!("handshake send failed: {e}"))
-        })
+        self.transport
+            .send_raw(data)
+            .await
+            .map_err(|e| ProtocolError::Serialization(format!("handshake send failed: {e}")))
     }
 
     /// Receive a raw handshake message (unencrypted).
     pub async fn recv_handshake(&mut self) -> Result<Vec<u8>, ProtocolError> {
-        self.transport.recv_raw().await.map_err(|e| {
-            ProtocolError::Deserialization(format!("handshake recv failed: {e}"))
-        })
+        self.transport
+            .recv_raw()
+            .await
+            .map_err(|e| ProtocolError::Deserialization(format!("handshake recv failed: {e}")))
     }
 
     /// Flush the transport.
     pub async fn flush(&mut self) -> Result<(), ProtocolError> {
-        self.transport.flush().await.map_err(|e| {
-            ProtocolError::Serialization(format!("flush failed: {e}"))
-        })
+        self.transport
+            .flush()
+            .await
+            .map_err(|e| ProtocolError::Serialization(format!("flush failed: {e}")))
     }
 
     /// Shutdown the transport.
     pub async fn shutdown(&mut self) -> Result<(), ProtocolError> {
-        self.transport.shutdown().await.map_err(|e| {
-            ProtocolError::Serialization(format!("shutdown failed: {e}"))
-        })
+        self.transport
+            .shutdown()
+            .await
+            .map_err(|e| ProtocolError::Serialization(format!("shutdown failed: {e}")))
     }
 
     /// Get mutable access to the underlying transport.

@@ -12,7 +12,6 @@ import com.justdrop.app.service.JustDropForegroundService
  * Quick Settings Tile for toggling JustDrop service from the notification shade.
  */
 class QuickSettingsTile : TileService() {
-
     companion object {
         private const val TAG = "JustDropTile"
     }

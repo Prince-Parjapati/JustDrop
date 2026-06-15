@@ -1,0 +1,9 @@
+[*.{kt,kts}]
+ij_kotlin_allow_trailing_comma = true
+ij_kotlin_allow_trailing_comma_on_call_site = true
+
+# Disable wildcard import rule
+ktlint_standard_no-wildcard-imports = disabled
+
+# Disable function naming rule (Jetpack Compose uses uppercase functions)
+ktlint_standard_function-naming = disabled

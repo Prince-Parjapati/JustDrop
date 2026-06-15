@@ -15,7 +15,6 @@ import android.util.Log
  * panel, and drag the JustDrop tile into place.
  */
 class JustDropTileService : TileService() {
-
     companion object {
         private const val TAG = "JustDropTile"
     }

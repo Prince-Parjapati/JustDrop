@@ -20,7 +20,6 @@ import org.json.JSONArray
  * Shows a bottom-sheet device picker and initiates transfer.
  */
 class ComposeShareActivity : ComponentActivity() {
-
     companion object {
         private const val TAG = "ComposeShareActivity"
     }
@@ -88,18 +87,21 @@ class ComposeShareActivity : ComponentActivity() {
         }
     }
 
-    private fun extractUris(intent: Intent): List<Uri> {
-        return when (intent.action) {
+    private fun extractUris(intent: Intent): List<Uri> =
+        when (intent.action) {
             Intent.ACTION_SEND -> {
                 val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
                 listOfNotNull(uri)
             }
+
             Intent.ACTION_SEND_MULTIPLE -> {
                 intent.getParcelableArrayListExtra<Uri>(Intent.EXTRA_STREAM) ?: emptyList()
             }
-            else -> emptyList()
+
+            else -> {
+                emptyList()
+            }
         }
-    }
 
     private fun resolveUri(uri: Uri): String? {
         return try {

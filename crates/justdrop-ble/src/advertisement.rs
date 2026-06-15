@@ -64,18 +64,14 @@ pub enum TransportHint {
 /// Presence state advertised over BLE.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[repr(u8)]
+#[derive(Default)]
 pub enum PresenceState {
     Idle = 0,
+    #[default]
     Available = 1,
     Receiving = 2,
     Busy = 3,
     Invisible = 4,
-}
-
-impl Default for PresenceState {
-    fn default() -> Self {
-        PresenceState::Available
-    }
 }
 
 /// Compact BLE advertisement payload.
@@ -91,7 +87,7 @@ impl Default for PresenceState {
 /// - transport_hint: 1 byte
 /// - presence: 1 byte
 /// - battery_level: 1 byte (0-100, 255 = unknown)
-/// Total: ~15 bytes + postcard framing overhead
+///   Total: ~15 bytes + postcard framing overhead
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Advertisement {
     /// Protocol version for forward compatibility.
@@ -145,8 +141,7 @@ impl Advertisement {
         if data.len() < 2 || data[..2] != MAGIC {
             return Err(AdvertisementError::InvalidMagic);
         }
-        postcard::from_bytes(&data[2..])
-            .map_err(|e| AdvertisementError::Deserialize(e.to_string()))
+        postcard::from_bytes(&data[2..]).map_err(|e| AdvertisementError::Deserialize(e.to_string()))
     }
 }
 
@@ -173,11 +168,7 @@ mod tests {
 
     #[test]
     fn roundtrip_serialization() {
-        let ad = Advertisement::from_identity(
-            &[0xAB; 32],
-            "TestMac",
-            TransportHint::SharedLan,
-        );
+        let ad = Advertisement::from_identity(&[0xAB; 32], "TestMac", TransportHint::SharedLan);
         let bytes = ad.to_bytes().unwrap();
         let decoded = Advertisement::from_bytes(&bytes).unwrap();
         assert_eq!(ad, decoded);
@@ -192,7 +183,11 @@ mod tests {
         );
         let bytes = ad.to_bytes().unwrap();
         // Legacy BLE manufacturer data: 31 bytes max, minus 4 bytes header = 27 usable
-        assert!(bytes.len() <= 27, "payload too large: {} bytes", bytes.len());
+        assert!(
+            bytes.len() <= 27,
+            "payload too large: {} bytes",
+            bytes.len()
+        );
     }
 
     #[test]

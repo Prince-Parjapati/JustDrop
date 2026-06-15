@@ -59,8 +59,8 @@ impl DeviceIdentity {
     /// Generate a fresh Ed25519 identity.
     fn generate(storage_path: PathBuf, device_name: &str) -> Result<Self, IdentityError> {
         let rng = ring::rand::SystemRandom::new();
-        let pkcs8_bytes = Ed25519KeyPair::generate_pkcs8(&rng)
-            .map_err(|_| IdentityError::KeyGeneration)?;
+        let pkcs8_bytes =
+            Ed25519KeyPair::generate_pkcs8(&rng).map_err(|_| IdentityError::KeyGeneration)?;
 
         let keypair = Ed25519KeyPair::from_pkcs8(pkcs8_bytes.as_ref())
             .map_err(|_| IdentityError::KeyGeneration)?;
@@ -94,8 +94,8 @@ impl DeviceIdentity {
         let stored: StoredIdentity = serde_json::from_str(&content)
             .map_err(|e| IdentityError::Storage(format!("parse: {e}")))?;
 
-        let keypair = Ed25519KeyPair::from_pkcs8(&stored.pkcs8_der)
-            .map_err(|_| IdentityError::InvalidKey)?;
+        let keypair =
+            Ed25519KeyPair::from_pkcs8(&stored.pkcs8_der).map_err(|_| IdentityError::InvalidKey)?;
 
         let fingerprint = blake3::hash(keypair.public_key().as_ref());
         let mut fp = [0u8; 32];
@@ -136,11 +136,8 @@ impl DeviceIdentity {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            std::fs::set_permissions(
-                &self.storage_path,
-                std::fs::Permissions::from_mode(0o600),
-            )
-            .map_err(|e| IdentityError::Storage(format!("chmod: {e}")))?;
+            std::fs::set_permissions(&self.storage_path, std::fs::Permissions::from_mode(0o600))
+                .map_err(|e| IdentityError::Storage(format!("chmod: {e}")))?;
         }
 
         info!(path = %self.storage_path.display(), "saved device identity");
@@ -245,10 +242,8 @@ mod tests {
         assert_eq!(sig.len(), 64); // Ed25519 signature is 64 bytes
 
         // Verify with ring
-        let pk = ring::signature::UnparsedPublicKey::new(
-            &ring::signature::ED25519,
-            id.public_key(),
-        );
+        let pk =
+            ring::signature::UnparsedPublicKey::new(&ring::signature::ED25519, id.public_key());
         pk.verify(data, &sig).unwrap();
     }
 

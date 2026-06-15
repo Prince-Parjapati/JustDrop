@@ -21,14 +21,11 @@ pub struct Database {
 impl Database {
     /// Open or create the database at the given path and run migrations.
     pub fn open(path: &Path) -> Result<Self, JustDropError> {
-        let conn = Connection::open(path).map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("sqlite open: {e}"))
-        })?;
+        let conn = Connection::open(path)
+            .map_err(|e| std::io::Error::other(format!("sqlite open: {e}")))?;
 
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, format!("sqlite pragma: {e}"))
-            })?;
+            .map_err(|e| std::io::Error::other(format!("sqlite pragma: {e}")))?;
 
         let db = Self {
             conn: Mutex::new(conn),
@@ -42,13 +39,10 @@ impl Database {
     /// Open an in-memory database (for testing).
     #[cfg(test)]
     pub fn open_memory() -> Result<Self, JustDropError> {
-        let conn = Connection::open_in_memory().map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("sqlite memory: {e}"))
-        })?;
+        let conn = Connection::open_in_memory()
+            .map_err(|e| std::io::Error::other(format!("sqlite memory: {e}")))?;
         conn.execute_batch("PRAGMA foreign_keys=ON;")
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, format!("sqlite pragma: {e}"))
-            })?;
+            .map_err(|e| std::io::Error::other(format!("sqlite pragma: {e}")))?;
         let db = Self {
             conn: Mutex::new(conn),
         };
@@ -65,27 +59,18 @@ impl Database {
                 version INTEGER NOT NULL
             );",
         )
-        .map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("migrate init: {e}"))
-        })?;
+        .map_err(|e| std::io::Error::other(format!("migrate init: {e}")))?;
 
         let current: u32 = conn
             .query_row("SELECT version FROM schema_version", [], |r| r.get(0))
             .optional()
-            .map_err(|e| {
-                std::io::Error::new(std::io::ErrorKind::Other, format!("migrate query: {e}"))
-            })?
+            .map_err(|e| std::io::Error::other(format!("migrate query: {e}")))?
             .unwrap_or(0);
 
         if current < 1 {
             debug!("applying migration v1");
             conn.execute_batch(include_str!("migrations/v001.sql"))
-                .map_err(|e| {
-                    std::io::Error::new(
-                        std::io::ErrorKind::Other,
-                        format!("migration v1 failed: {e}"),
-                    )
-                })?;
+                .map_err(|e| std::io::Error::other(format!("migration v1 failed: {e}")))?;
         }
 
         // Upsert version
@@ -93,9 +78,7 @@ impl Database {
             "INSERT OR REPLACE INTO schema_version (rowid, version) VALUES (1, ?1)",
             params![SCHEMA_VERSION],
         )
-        .map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("version update: {e}"))
-        })?;
+        .map_err(|e| std::io::Error::other(format!("version update: {e}")))?;
 
         info!(version = SCHEMA_VERSION, "schema at version");
         Ok(())
@@ -122,9 +105,7 @@ impl Database {
                 updated_at = excluded.updated_at",
             params![fingerprint, name, platform, level.as_str()],
         )
-        .map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("set_trust: {e}"))
-        })?;
+        .map_err(|e| std::io::Error::other(format!("set_trust: {e}")))?;
         Ok(())
     }
 
@@ -139,7 +120,7 @@ impl Database {
         .optional()
         .ok()
         .flatten()
-        .map(|s| TrustLevel::from_str(&s))
+        .map(|s| TrustLevel::parse_str(&s))
         .unwrap_or(TrustLevel::Unknown)
     }
 
@@ -151,9 +132,9 @@ impl Database {
     /// Get all peers with a given trust level.
     pub fn peers_with_trust(&self, level: TrustLevel) -> Vec<(String, String)> {
         let conn = self.conn.lock();
-        let mut stmt = match conn.prepare(
-            "SELECT fingerprint, name FROM peers WHERE trust_level = ?1 ORDER BY name",
-        ) {
+        let mut stmt = match conn
+            .prepare("SELECT fingerprint, name FROM peers WHERE trust_level = ?1 ORDER BY name")
+        {
             Ok(s) => s,
             Err(_) => return Vec::new(),
         };
@@ -182,11 +163,16 @@ impl Database {
             "INSERT INTO transfer_history
              (transfer_id, peer_fingerprint, direction, file_count, total_bytes, status, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'))",
-            params![transfer_id, peer_fingerprint, direction, file_count, total_bytes, status],
+            params![
+                transfer_id,
+                peer_fingerprint,
+                direction,
+                file_count,
+                total_bytes,
+                status
+            ],
         )
-        .map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("record_transfer: {e}"))
-        })?;
+        .map_err(|e| std::io::Error::other(format!("record_transfer: {e}")))?;
         Ok(())
     }
 
@@ -206,9 +192,7 @@ impl Database {
              VALUES (?1, ?2, ?3, datetime('now'))",
             params![transfer_id, peer_fingerprint, state_blob],
         )
-        .map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("save_resume: {e}"))
-        })?;
+        .map_err(|e| std::io::Error::other(format!("save_resume: {e}")))?;
         Ok(())
     }
 
@@ -232,9 +216,7 @@ impl Database {
             "DELETE FROM resume_state WHERE transfer_id = ?1",
             params![transfer_id],
         )
-        .map_err(|e| {
-            std::io::Error::new(std::io::ErrorKind::Other, format!("clear_resume: {e}"))
-        })?;
+        .map_err(|e| std::io::Error::other(format!("clear_resume: {e}")))?;
         Ok(())
     }
 }
@@ -308,9 +290,12 @@ mod tests {
     #[test]
     fn peers_filtered_by_trust() {
         let db = Database::open_memory().unwrap();
-        db.set_trust("a", "DevA", "macOS", TrustLevel::Trusted).unwrap();
-        db.set_trust("b", "DevB", "Android", TrustLevel::Blocked).unwrap();
-        db.set_trust("c", "DevC", "macOS", TrustLevel::Trusted).unwrap();
+        db.set_trust("a", "DevA", "macOS", TrustLevel::Trusted)
+            .unwrap();
+        db.set_trust("b", "DevB", "Android", TrustLevel::Blocked)
+            .unwrap();
+        db.set_trust("c", "DevC", "macOS", TrustLevel::Trusted)
+            .unwrap();
 
         let trusted = db.peers_with_trust(TrustLevel::Trusted);
         assert_eq!(trusted.len(), 2);

@@ -7,7 +7,6 @@ package com.justdrop.app
  * `justdrop-ffi`. The library is loaded once when this object is first accessed.
  */
 object JustBridge {
-
     init {
         System.loadLibrary("justdrop_ffi")
     }
@@ -36,7 +35,10 @@ object JustBridge {
      * @param filePathsJson JSON array of file path strings
      * @return 0 on success (transfer started in background)
      */
-    external fun sendFiles(peerId: String, filePathsJson: String): Int
+    external fun sendFiles(
+        peerId: String,
+        filePathsJson: String,
+    ): Int
 
     /** Accept an incoming transfer request. */
     external fun acceptTransfer(transferId: String): Int

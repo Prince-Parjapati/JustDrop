@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use tracing::info;
 
 /// Top-level configuration.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Config {
     #[serde(default)]
     pub general: GeneralConfig,
@@ -151,18 +151,6 @@ fn default_peer_timeout() -> u64 {
     180
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            general: GeneralConfig::default(),
-            network: NetworkConfig::default(),
-            transfer: TransferConfig::default(),
-            security: SecurityConfig::default(),
-            discovery: DiscoveryConfig::default(),
-        }
-    }
-}
-
 impl Default for GeneralConfig {
     fn default() -> Self {
         Self {
@@ -220,7 +208,10 @@ impl Config {
     /// Load configuration from a TOML file, falling back to defaults for missing fields.
     pub fn load(path: &Path) -> Result<Self, ConfigError> {
         if !path.exists() {
-            info!("Config file not found at {}, using defaults", path.display());
+            info!(
+                "Config file not found at {}, using defaults",
+                path.display()
+            );
             return Ok(Self::default());
         }
 
@@ -228,7 +219,8 @@ impl Config {
             path: path.to_path_buf(),
         })?;
 
-        let config: Config = toml::from_str(&content).map_err(|e| ConfigError::Parse { source: e })?;
+        let config: Config =
+            toml::from_str(&content).map_err(|e| ConfigError::Parse { source: e })?;
         config.validate()?;
         Ok(config)
     }
@@ -317,7 +309,6 @@ fn hostname() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::io::Write;
 
     #[test]
     fn default_config_is_valid() {

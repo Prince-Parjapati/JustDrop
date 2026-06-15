@@ -31,7 +31,11 @@ impl NoiseSession {
             .write_message(plaintext, &mut buf)
             .map_err(|e| SecurityError::EncryptionFailed(format!("{e}")))?;
         buf.truncate(len);
-        trace!(plaintext_len = plaintext.len(), ciphertext_len = len, "encrypted message");
+        trace!(
+            plaintext_len = plaintext.len(),
+            ciphertext_len = len,
+            "encrypted message"
+        );
         Ok(buf)
     }
 
@@ -43,7 +47,11 @@ impl NoiseSession {
             .read_message(ciphertext, &mut buf)
             .map_err(|e| SecurityError::DecryptionFailed(format!("{e}")))?;
         buf.truncate(len);
-        trace!(ciphertext_len = ciphertext.len(), plaintext_len = len, "decrypted message");
+        trace!(
+            ciphertext_len = ciphertext.len(),
+            plaintext_len = len,
+            "decrypted message"
+        );
         Ok(buf)
     }
 

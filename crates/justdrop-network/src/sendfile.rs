@@ -8,7 +8,7 @@
 
 use std::os::fd::AsRawFd;
 use std::path::Path;
-use tracing::{debug, trace, warn};
+use tracing::{debug, warn};
 
 /// Result of a sendfile operation.
 pub struct SendfileResult {
@@ -176,7 +176,7 @@ async fn sendfile_macos(
         })
     })
     .await
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))??;
+    .map_err(std::io::Error::other)??;
 
     debug!(
         bytes = result.bytes_sent,
@@ -190,12 +190,12 @@ async fn sendfile_macos(
 #[allow(dead_code)]
 async fn sendfile_fallback(
     file_path: &Path,
-    socket: &tokio::net::TcpStream,
+    _socket: &tokio::net::TcpStream,
     offset: u64,
     count: u64,
 ) -> Result<SendfileResult, std::io::Error> {
     use tokio::fs::File;
-    use tokio::io::{AsyncReadExt, AsyncSeekExt, AsyncWriteExt};
+    use tokio::io::{AsyncReadExt, AsyncSeekExt};
 
     warn!("using userspace copy fallback (no sendfile support)");
 

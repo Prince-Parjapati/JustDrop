@@ -3,8 +3,8 @@
 use justdrop_core::error::StorageError;
 use justdrop_core::types::Sha256Hash;
 use sha2::{Digest, Sha256};
-use std::path::{Path, PathBuf};
-use tracing::{debug, info};
+use std::path::Path;
+use tracing::info;
 
 /// Verify the SHA-256 hash of a completed file against the expected hash.
 pub async fn verify_file(path: &Path, expected: &Sha256Hash) -> Result<bool, StorageError> {

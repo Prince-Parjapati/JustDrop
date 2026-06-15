@@ -24,7 +24,6 @@ import com.justdrop.app.ble.BleScanner
  * - mDNS multicast lock
  */
 class JustDropForegroundService : Service() {
-
     companion object {
         private const val TAG = "JustDropFgService"
         private const val NOTIFICATION_ID = 1
@@ -53,9 +52,11 @@ class JustDropForegroundService : Service() {
         startBle()
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        return START_STICKY
-    }
+    override fun onStartCommand(
+        intent: Intent?,
+        flags: Int,
+        startId: Int,
+    ): Int = START_STICKY
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -76,48 +77,57 @@ class JustDropForegroundService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "JustDrop Service",
-                NotificationManager.IMPORTANCE_LOW,
-            ).apply {
-                description = "JustDrop file transfer service"
-                setShowBadge(false)
-            }
+            val channel =
+                NotificationChannel(
+                    CHANNEL_ID,
+                    "JustDrop Service",
+                    NotificationManager.IMPORTANCE_LOW,
+                ).apply {
+                    description = "JustDrop file transfer service"
+                    setShowBadge(false)
+                }
             getSystemService(NotificationManager::class.java)
                 .createNotificationChannel(channel)
         }
     }
 
     private fun startForegroundNotification() {
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("JustDrop")
-            .setContentText("Ready to send and receive files")
-            .setSmallIcon(android.R.drawable.ic_menu_share)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setOngoing(true)
-            .build()
+        val notification =
+            NotificationCompat
+                .Builder(this, CHANNEL_ID)
+                .setContentTitle("JustDrop")
+                .setContentText("Ready to send and receive files")
+                .setSmallIcon(android.R.drawable.ic_menu_share)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+                .setOngoing(true)
+                .build()
 
-        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-        } else 0
+        val type =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC or
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
+            } else {
+                0
+            }
 
         ServiceCompat.startForeground(this, NOTIFICATION_ID, notification, type)
     }
 
     private fun acquireMulticastLock() {
         val wifi = applicationContext.getSystemService(android.content.Context.WIFI_SERVICE) as android.net.wifi.WifiManager
-        multicastLock = wifi.createMulticastLock("JustDropMulticastLock").apply {
-            setReferenceCounted(true)
-            acquire()
-        }
+        multicastLock =
+            wifi.createMulticastLock("JustDropMulticastLock").apply {
+                setReferenceCounted(true)
+                acquire()
+            }
     }
 
     private fun initRustEngine() {
-        val justDropDir = java.io.File(
-            android.os.Environment.getExternalStorageDirectory(), "JustDrop"
-        )
+        val justDropDir =
+            java.io.File(
+                android.os.Environment.getExternalStorageDirectory(),
+                "JustDrop",
+            )
         if (!justDropDir.exists()) justDropDir.mkdirs()
 
         JustBridge.setDownloadsDir(justDropDir.absolutePath)
@@ -145,32 +155,43 @@ class JustDropForegroundService : Service() {
         bleAdvertiser.start(payload)
 
         // Start BLE scanning
-        bleScanner.start(object : BleScanner.Listener {
-            override fun onDeviceFound(address: String, rssi: Int, serviceData: ByteArray?) {
-                Log.d(TAG, "BLE device found: $address rssi=$rssi")
-                // Feed to Rust engine for peer discovery merge
-            }
+        bleScanner.start(
+            object : BleScanner.Listener {
+                override fun onDeviceFound(
+                    address: String,
+                    rssi: Int,
+                    serviceData: ByteArray?,
+                ) {
+                    Log.d(TAG, "BLE device found: $address rssi=$rssi")
+                    // Feed to Rust engine for peer discovery merge
+                }
 
-            override fun onDeviceLost(address: String) {
-                Log.d(TAG, "BLE device lost: $address")
-            }
-        })
+                override fun onDeviceLost(address: String) {
+                    Log.d(TAG, "BLE device lost: $address")
+                }
+            },
+        )
 
         // Start GATT server for handshake
-        gattServer.start(object : BleGattServer.Listener {
-            override fun onHandshakeReceived(deviceAddress: String, data: ByteArray): ByteArray? {
-                Log.i(TAG, "Handshake from $deviceAddress: ${data.size} bytes")
-                // Process via Rust engine crypto
-                return null // Response generated by engine
-            }
+        gattServer.start(
+            object : BleGattServer.Listener {
+                override fun onHandshakeReceived(
+                    deviceAddress: String,
+                    data: ByteArray,
+                ): ByteArray? {
+                    Log.i(TAG, "Handshake from $deviceAddress: ${data.size} bytes")
+                    // Process via Rust engine crypto
+                    return null // Response generated by engine
+                }
 
-            override fun onDeviceConnected(deviceAddress: String) {
-                Log.i(TAG, "GATT device connected: $deviceAddress")
-            }
+                override fun onDeviceConnected(deviceAddress: String) {
+                    Log.i(TAG, "GATT device connected: $deviceAddress")
+                }
 
-            override fun onDeviceDisconnected(deviceAddress: String) {
-                Log.i(TAG, "GATT device disconnected: $deviceAddress")
-            }
-        })
+                override fun onDeviceDisconnected(deviceAddress: String) {
+                    Log.i(TAG, "GATT device disconnected: $deviceAddress")
+                }
+            },
+        )
     }
 }

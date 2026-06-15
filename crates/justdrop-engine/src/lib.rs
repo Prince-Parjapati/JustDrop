@@ -10,10 +10,10 @@
 //! - Active sessions
 //! - Transfer queue
 
+pub mod engine;
 pub mod events;
 pub mod peer;
 pub mod session;
-pub mod engine;
 
 pub use engine::Engine;
 pub use events::EngineEvent;

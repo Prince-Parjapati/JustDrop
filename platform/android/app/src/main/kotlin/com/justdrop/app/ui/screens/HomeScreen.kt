@@ -47,8 +47,12 @@ fun HomeScreen(
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
-                            text = if (isServiceRunning) "${devices.size} devices nearby"
-                            else "Service stopped",
+                            text =
+                                if (isServiceRunning) {
+                                    "${devices.size} devices nearby"
+                                } else {
+                                    "Service stopped"
+                                },
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
@@ -58,30 +62,40 @@ fun HomeScreen(
                     // Power toggle
                     IconButton(onClick = onToggleService) {
                         Icon(
-                            imageVector = if (isServiceRunning) Icons.Default.RadioButtonChecked
-                            else Icons.Default.RadioButtonUnchecked,
+                            imageVector =
+                                if (isServiceRunning) {
+                                    Icons.Default.RadioButtonChecked
+                                } else {
+                                    Icons.Default.RadioButtonUnchecked
+                                },
                             contentDescription = "Toggle",
-                            tint = if (isServiceRunning) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.outline,
+                            tint =
+                                if (isServiceRunning) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    MaterialTheme.colorScheme.outline
+                                },
                         )
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(Icons.Default.Settings, contentDescription = "Settings")
                     }
                 },
-                colors = TopAppBarDefaults.largeTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                ),
+                colors =
+                    TopAppBarDefaults.largeTopAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.background,
+                    ),
             )
         },
     ) { padding ->
         LazyColumn(
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = 16.dp,
-                start = 16.dp,
-                end = 16.dp,
-            ),
+            contentPadding =
+                PaddingValues(
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp,
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Active transfers
@@ -168,9 +182,10 @@ fun ScanningIndicator() {
     val rotation by infiniteTransition.animateFloat(
         initialValue = 0f,
         targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-        ),
+        animationSpec =
+            infiniteRepeatable(
+                animation = tween(2000, easing = LinearEasing),
+            ),
         label = "rotation",
     )
 
@@ -178,9 +193,10 @@ fun ScanningIndicator() {
         Icon(
             imageVector = Icons.Default.Radar,
             contentDescription = "Scanning",
-            modifier = Modifier
-                .size(16.dp)
-                .rotate(rotation),
+            modifier =
+                Modifier
+                    .size(16.dp)
+                    .rotate(rotation),
             tint = MaterialTheme.colorScheme.primary,
         )
         Spacer(modifier = Modifier.width(4.dp))
@@ -199,9 +215,10 @@ fun EmptyState(
     subtitle: String,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 48.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(vertical = 48.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Icon(

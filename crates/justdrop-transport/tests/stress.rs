@@ -2,7 +2,6 @@
 
 use justdrop_transport::endpoint::{connect, create_client, create_server, QuicConnection};
 use std::net::SocketAddr;
-use std::sync::Arc;
 use tokio::time::{timeout, Duration};
 
 fn gen_cert() -> (Vec<u8>, Vec<u8>) {
@@ -54,7 +53,10 @@ async fn concurrent_50_streams() {
     }
 
     let _ = done_tx.send(());
-    timeout(Duration::from_secs(30), server_task).await.unwrap().unwrap();
+    timeout(Duration::from_secs(30), server_task)
+        .await
+        .unwrap()
+        .unwrap();
 }
 
 /// Test sequential large transfers: 10 × 1MB.
@@ -98,5 +100,8 @@ async fn sequential_10mb() {
     }
 
     let _ = done_tx.send(());
-    timeout(Duration::from_secs(30), server_task).await.unwrap().unwrap();
+    timeout(Duration::from_secs(30), server_task)
+        .await
+        .unwrap()
+        .unwrap();
 }

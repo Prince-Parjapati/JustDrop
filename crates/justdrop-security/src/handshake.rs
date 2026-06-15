@@ -179,8 +179,8 @@ impl NoiseResponder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::{Arc, Mutex};
     use std::collections::VecDeque;
+    use std::sync::{Arc, Mutex};
 
     /// In-memory channel for testing handshakes without real I/O.
     struct TestChannel {
@@ -191,10 +191,7 @@ mod tests {
         fn new() -> (Self, Self) {
             let q1 = Arc::new(Mutex::new(VecDeque::new()));
             let q2 = Arc::new(Mutex::new(VecDeque::new()));
-            (
-                Self { queue: q1.clone() },
-                Self { queue: q2.clone() },
-            )
+            (Self { queue: q1.clone() }, Self { queue: q2.clone() })
         }
     }
 
@@ -259,8 +256,8 @@ mod tests {
         });
 
         let (i_result, r_result) = tokio::join!(i_handle, r_handle);
-        let (i_session, i_remote_key) = i_result.unwrap().unwrap();
-        let (r_session, r_remote_key) = r_result.unwrap().unwrap();
+        let (_i_session, i_remote_key) = i_result.unwrap().unwrap();
+        let (_r_session, r_remote_key) = r_result.unwrap().unwrap();
 
         // Verify mutual authentication
         assert_eq!(i_remote_key, keys_r.public_key());

@@ -4,7 +4,7 @@
 //! Events are the sole communication channel from engine → platform.
 
 use crate::peer::Peer;
-use justdrop_core::types::{TransferManifest, TransferProgress, TransferId};
+use justdrop_core::types::{TransferId, TransferManifest, TransferProgress};
 use std::path::PathBuf;
 
 /// Events emitted by the engine to the platform layer.
@@ -63,10 +63,7 @@ pub enum EngineEvent {
 
     // ── Transport ───────────────────────────────────────────────────
     /// Hotspot credentials received — platform should join this Wi-Fi.
-    JoinHotspot {
-        ssid: String,
-        passphrase: String,
-    },
+    JoinHotspot { ssid: String, passphrase: String },
 
     /// Request platform to create a LocalOnlyHotspot.
     CreateHotspot,

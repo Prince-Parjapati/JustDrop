@@ -73,7 +73,7 @@ impl ResumeManager {
 
         let content = serde_json::to_string_pretty(state).map_err(|e| StorageError::Io {
             path: path.clone(),
-            source: std::io::Error::new(std::io::ErrorKind::Other, e),
+            source: std::io::Error::other(e),
         })?;
 
         tokio::fs::write(&path, content)
@@ -92,7 +92,10 @@ impl ResumeManager {
     }
 
     /// Load resume state for a transfer, if it exists.
-    pub async fn load(&self, transfer_id: TransferId) -> Result<Option<TransferResumeState>, StorageError> {
+    pub async fn load(
+        &self,
+        transfer_id: TransferId,
+    ) -> Result<Option<TransferResumeState>, StorageError> {
         let path = self.state_path(transfer_id);
 
         if !tokio::fs::try_exists(&path).await.unwrap_or(false) {
@@ -106,10 +109,8 @@ impl ResumeManager {
                 source: e,
             })?;
 
-        let state: TransferResumeState =
-            serde_json::from_str(&content).map_err(|_| StorageError::ResumeStateCorrupted {
-                transfer_id,
-            })?;
+        let state: TransferResumeState = serde_json::from_str(&content)
+            .map_err(|_| StorageError::ResumeStateCorrupted { transfer_id })?;
 
         info!(
             transfer_id = %transfer_id,
@@ -153,14 +154,12 @@ impl ResumeManager {
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()) == Some("json") {
                 match tokio::fs::read_to_string(&path).await {
-                    Ok(content) => {
-                        match serde_json::from_str::<TransferResumeState>(&content) {
-                            Ok(state) => states.push(state),
-                            Err(e) => {
-                                warn!(path = %path.display(), error = %e, "corrupt resume state, skipping");
-                            }
+                    Ok(content) => match serde_json::from_str::<TransferResumeState>(&content) {
+                        Ok(state) => states.push(state),
+                        Err(e) => {
+                            warn!(path = %path.display(), error = %e, "corrupt resume state, skipping");
                         }
-                    }
+                    },
                     Err(e) => {
                         warn!(path = %path.display(), error = %e, "failed to read resume state");
                     }
@@ -173,7 +172,7 @@ impl ResumeManager {
 
     /// Compute a compressed bitmap of received chunks for the resume response.
     pub fn encode_received_bitmap(completed: &HashSet<u64>, total_chunks: u64) -> Vec<u8> {
-        let byte_count = ((total_chunks + 7) / 8) as usize;
+        let byte_count = total_chunks.div_ceil(8) as usize;
         let mut bitmap = vec![0u8; byte_count];
         for &chunk in completed {
             let byte_idx = (chunk / 8) as usize;

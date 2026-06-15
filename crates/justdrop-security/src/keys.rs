@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use snow::Keypair;
 use std::fs;
 use std::path::{Path, PathBuf};
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use zeroize::Zeroize;
 
 /// Wrapper around a Noise static key pair with fingerprint caching.
@@ -54,9 +54,9 @@ impl IdentityKeys {
                 .map_err(|e| SecurityError::InvalidKey(format!("bad noise params: {e}")))?,
         );
 
-        let keypair = builder.generate_keypair().map_err(|e| {
-            SecurityError::InvalidKey(format!("keypair generation failed: {e}"))
-        })?;
+        let keypair = builder
+            .generate_keypair()
+            .map_err(|e| SecurityError::InvalidKey(format!("keypair generation failed: {e}")))?;
 
         let fingerprint = compute_fingerprint(&keypair.public);
 
@@ -74,13 +74,11 @@ impl IdentityKeys {
 
     /// Load keys from a JSON file.
     fn load_from_file(path: &Path) -> Result<Self, SecurityError> {
-        let content = fs::read_to_string(path).map_err(|e| {
-            SecurityError::KeyStorage(format!("failed to read key file: {e}"))
-        })?;
+        let content = fs::read_to_string(path)
+            .map_err(|e| SecurityError::KeyStorage(format!("failed to read key file: {e}")))?;
 
-        let stored: StoredKeys = serde_json::from_str(&content).map_err(|e| {
-            SecurityError::KeyStorage(format!("failed to parse key file: {e}"))
-        })?;
+        let stored: StoredKeys = serde_json::from_str(&content)
+            .map_err(|e| SecurityError::KeyStorage(format!("failed to parse key file: {e}")))?;
 
         if stored.private_key.len() != 32 || stored.public_key.len() != 32 {
             return Err(SecurityError::InvalidKey(
@@ -121,13 +119,11 @@ impl IdentityKeys {
             public_key: self.keypair.public.clone(),
         };
 
-        let content = serde_json::to_string_pretty(&stored).map_err(|e| {
-            SecurityError::KeyStorage(format!("failed to serialize keys: {e}"))
-        })?;
+        let content = serde_json::to_string_pretty(&stored)
+            .map_err(|e| SecurityError::KeyStorage(format!("failed to serialize keys: {e}")))?;
 
-        fs::write(&self.storage_path, content).map_err(|e| {
-            SecurityError::KeyStorage(format!("failed to write key file: {e}"))
-        })?;
+        fs::write(&self.storage_path, content)
+            .map_err(|e| SecurityError::KeyStorage(format!("failed to write key file: {e}")))?;
 
         // Set restrictive permissions on Unix
         #[cfg(unix)]
@@ -243,6 +239,9 @@ mod tests {
         let display = hex_fingerprint(&fp);
         assert!(display.contains(':'));
         // Should be groups of 4 hex chars separated by colons
-        assert_eq!(display, "abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab");
+        assert_eq!(
+            display,
+            "abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab:abab"
+        );
     }
 }

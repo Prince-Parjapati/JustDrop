@@ -17,4 +17,3 @@ pub use crypto::{CryptoError, KeyExchangeInitiator, SessionCipher, SessionKeys};
 pub use handshake::{NoiseInitiator, NoiseResponder};
 pub use keys::IdentityKeys;
 pub use session::NoiseSession;
-

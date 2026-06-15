@@ -97,9 +97,7 @@ pub enum TransportAccept {
         port: u16,
     },
     /// Rejected — incompatible transports.
-    Rejected {
-        reason: String,
-    },
+    Rejected { reason: String },
 }
 
 impl HandshakeRequest {
@@ -218,10 +216,18 @@ mod tests {
         // With negotiated MTU, our handshake must fit in 512 bytes.
         let req = dummy_request();
         let bytes = req.to_bytes().unwrap();
-        assert!(bytes.len() < 512, "request too large: {} bytes", bytes.len());
+        assert!(
+            bytes.len() < 512,
+            "request too large: {} bytes",
+            bytes.len()
+        );
 
         let resp = dummy_response();
         let bytes = resp.to_bytes().unwrap();
-        assert!(bytes.len() < 512, "response too large: {} bytes", bytes.len());
+        assert!(
+            bytes.len() < 512,
+            "response too large: {} bytes",
+            bytes.len()
+        );
     }
 }

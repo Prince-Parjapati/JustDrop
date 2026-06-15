@@ -2,17 +2,13 @@
 
 use justdrop_core::config::NetworkConfig;
 use justdrop_core::error::NetworkError;
-use socket2::{Domain, Protocol, Socket, Type};
 use std::net::SocketAddr;
 use std::time::Duration;
 use tokio::net::TcpStream;
 use tracing::{debug, info, warn};
 
 /// Connect to a peer with socket tuning and timeout.
-pub async fn connect(
-    addr: SocketAddr,
-    config: &NetworkConfig,
-) -> Result<TcpStream, NetworkError> {
+pub async fn connect(addr: SocketAddr, config: &NetworkConfig) -> Result<TcpStream, NetworkError> {
     let timeout = Duration::from_secs(config.connect_timeout_secs);
 
     debug!(peer = %addr, timeout_secs = config.connect_timeout_secs, "connecting to peer");

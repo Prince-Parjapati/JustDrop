@@ -9,15 +9,21 @@ import android.util.Log
 /**
  * Manages Android LocalOnlyHotspot for offline peer-to-peer connectivity.
  */
-class HotspotManager(private val context: Context) {
-
+class HotspotManager(
+    private val context: Context,
+) {
     companion object {
         private const val TAG = "HotspotManager"
     }
 
     interface Listener {
-        fun onHotspotStarted(ssid: String, passphrase: String)
+        fun onHotspotStarted(
+            ssid: String,
+            passphrase: String,
+        )
+
         fun onHotspotFailed(reason: String)
+
         fun onHotspotStopped()
     }
 
@@ -26,30 +32,34 @@ class HotspotManager(private val context: Context) {
 
     fun startHotspot(listener: Listener) {
         this.listener = listener
-        val wifiManager = context.applicationContext
-            .getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val wifiManager =
+            context.applicationContext
+                .getSystemService(Context.WIFI_SERVICE) as WifiManager
 
         try {
-            wifiManager.startLocalOnlyHotspot(object : WifiManager.LocalOnlyHotspotCallback() {
-                override fun onStarted(res: WifiManager.LocalOnlyHotspotReservation?) {
-                    reservation = res
-                    val config = res?.wifiConfiguration
-                    val ssid = config?.SSID ?: return
-                    val pass = config.preSharedKey ?: return
-                    Log.i(TAG, "Hotspot started: $ssid")
-                    listener.onHotspotStarted(ssid, pass)
-                }
+            wifiManager.startLocalOnlyHotspot(
+                object : WifiManager.LocalOnlyHotspotCallback() {
+                    override fun onStarted(res: WifiManager.LocalOnlyHotspotReservation?) {
+                        reservation = res
+                        val config = res?.wifiConfiguration
+                        val ssid = config?.SSID ?: return
+                        val pass = config.preSharedKey ?: return
+                        Log.i(TAG, "Hotspot started: $ssid")
+                        listener.onHotspotStarted(ssid, pass)
+                    }
 
-                override fun onStopped() {
-                    Log.i(TAG, "Hotspot stopped")
-                    listener.onHotspotStopped()
-                }
+                    override fun onStopped() {
+                        Log.i(TAG, "Hotspot stopped")
+                        listener.onHotspotStopped()
+                    }
 
-                override fun onFailed(reason: Int) {
-                    Log.e(TAG, "Hotspot failed: $reason")
-                    listener.onHotspotFailed("Error code: $reason")
-                }
-            }, Handler(Looper.getMainLooper()))
+                    override fun onFailed(reason: Int) {
+                        Log.e(TAG, "Hotspot failed: $reason")
+                        listener.onHotspotFailed("Error code: $reason")
+                    }
+                },
+                Handler(Looper.getMainLooper()),
+            )
         } catch (e: SecurityException) {
             Log.e(TAG, "Hotspot permission denied", e)
             listener.onHotspotFailed("Permission denied")

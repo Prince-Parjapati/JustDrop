@@ -1,7 +1,7 @@
 //! Legacy C-ABI functions for Swift/Kotlin interoperability
 
-use std::os::raw::{c_char, c_int};
 use std::ffi::CString;
+use std::os::raw::{c_char, c_int};
 
 #[no_mangle]
 pub extern "C" fn justdrop_init(_config_path: *const c_char) -> c_int {
@@ -25,7 +25,10 @@ pub extern "C" fn justdrop_get_peers() -> *mut c_char {
 }
 
 #[no_mangle]
-pub extern "C" fn justdrop_send_files(_peer_id: *const c_char, _paths_json: *const c_char) -> c_int {
+pub extern "C" fn justdrop_send_files(
+    _peer_id: *const c_char,
+    _paths_json: *const c_char,
+) -> c_int {
     0
 }
 

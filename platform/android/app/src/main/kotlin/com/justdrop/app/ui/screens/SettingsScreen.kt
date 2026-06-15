@@ -34,9 +34,10 @@ fun SettingsScreen(
         },
     ) { padding ->
         Column(
-            modifier = Modifier
-                .padding(padding)
-                .padding(horizontal = 16.dp),
+            modifier =
+                Modifier
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             // Device Identity Card
@@ -124,9 +125,10 @@ fun SettingsScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                ),
+                colors =
+                    CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    ),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
@@ -156,14 +158,16 @@ fun SettingSwitch(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
     ) {
         Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 12.dp)
-                .fillMaxWidth(),
+            modifier =
+                Modifier
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(

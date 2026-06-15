@@ -38,12 +38,13 @@ fun TransferScreen(
         },
     ) { padding ->
         LazyColumn(
-            contentPadding = PaddingValues(
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = 16.dp,
-                start = 16.dp,
-                end = 16.dp,
-            ),
+            contentPadding =
+                PaddingValues(
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = 16.dp,
+                    start = 16.dp,
+                    end = 16.dp,
+                ),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             // Active transfers
@@ -82,9 +83,10 @@ fun TransferScreen(
             if (transferHistory.isEmpty()) {
                 item {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 32.dp),
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         Icon(
@@ -115,9 +117,10 @@ fun TransferHistoryCard(item: TransferHistoryItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-        ),
+        colors =
+            CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+            ),
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -126,8 +129,12 @@ fun TransferHistoryCard(item: TransferHistoryItem) {
             Icon(
                 imageVector = if (item.direction == "Send") Icons.Default.Upload else Icons.Default.Download,
                 contentDescription = null,
-                tint = if (item.success) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error,
+                tint =
+                    if (item.success) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.error
+                    },
                 modifier = Modifier.size(24.dp),
             )
 
@@ -150,8 +157,12 @@ fun TransferHistoryCard(item: TransferHistoryItem) {
                 Icon(
                     imageVector = if (item.success) Icons.Default.CheckCircle else Icons.Default.Cancel,
                     contentDescription = null,
-                    tint = if (item.success) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.error,
+                    tint =
+                        if (item.success) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        },
                     modifier = Modifier.size(20.dp),
                 )
                 Text(

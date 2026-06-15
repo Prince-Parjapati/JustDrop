@@ -30,18 +30,20 @@ fun DevicePickerSheet(
     onCancel: () -> Unit,
 ) {
     Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(24.dp),
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(24.dp),
     ) {
         // Handle
         Box(
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .width(40.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
+            modifier =
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .width(40.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)),
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -56,9 +58,10 @@ fun DevicePickerSheet(
 
         if (devices.isEmpty() && isScanning) {
             Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 32.dp),
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 CircularProgressIndicator(

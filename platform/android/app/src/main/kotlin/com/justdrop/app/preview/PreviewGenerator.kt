@@ -15,7 +15,6 @@ import android.util.Size
  * Supports images, videos, and falls back to mime-type icons.
  */
 object PreviewGenerator {
-
     private const val TAG = "PreviewGenerator"
     private const val THUMB_SIZE = 256
 
@@ -23,8 +22,12 @@ object PreviewGenerator {
      * Generate a thumbnail bitmap for the given file path.
      * Returns null if thumbnail generation fails.
      */
-    fun generateThumbnail(context: Context, filePath: String, mimeType: String): Bitmap? {
-        return try {
+    fun generateThumbnail(
+        context: Context,
+        filePath: String,
+        mimeType: String,
+    ): Bitmap? =
+        try {
             when {
                 mimeType.startsWith("image/") -> generateImageThumbnail(filePath)
                 mimeType.startsWith("video/") -> generateVideoThumbnail(filePath)
@@ -34,24 +37,26 @@ object PreviewGenerator {
             Log.w(TAG, "Thumbnail generation failed for $filePath", e)
             null
         }
-    }
 
     private fun generateImageThumbnail(filePath: String): Bitmap? {
-        val options = BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
+        val options =
+            BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
         BitmapFactory.decodeFile(filePath, options)
 
         // Calculate sample size
-        val scaleFactor = maxOf(
-            options.outWidth / THUMB_SIZE,
-            options.outHeight / THUMB_SIZE,
-            1
-        )
+        val scaleFactor =
+            maxOf(
+                options.outWidth / THUMB_SIZE,
+                options.outHeight / THUMB_SIZE,
+                1,
+            )
 
-        val decodeOptions = BitmapFactory.Options().apply {
-            inSampleSize = scaleFactor
-        }
+        val decodeOptions =
+            BitmapFactory.Options().apply {
+                inSampleSize = scaleFactor
+            }
 
         val bitmap = BitmapFactory.decodeFile(filePath, decodeOptions) ?: return null
         return ThumbnailUtils.extractThumbnail(bitmap, THUMB_SIZE, THUMB_SIZE)
@@ -76,20 +81,19 @@ object PreviewGenerator {
     /**
      * Format file size for display.
      */
-    fun formatFileSize(bytes: Long): String {
-        return when {
+    fun formatFileSize(bytes: Long): String =
+        when {
             bytes < 1024 -> "$bytes B"
             bytes < 1024 * 1024 -> "${bytes / 1024} KB"
             bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
             else -> String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024))
         }
-    }
 
     /**
      * Get a display-friendly MIME type description.
      */
-    fun mimeTypeLabel(mimeType: String): String {
-        return when {
+    fun mimeTypeLabel(mimeType: String): String =
+        when {
             mimeType.startsWith("image/") -> "Image"
             mimeType.startsWith("video/") -> "Video"
             mimeType.startsWith("audio/") -> "Audio"
@@ -98,5 +102,4 @@ object PreviewGenerator {
             mimeType.startsWith("text/") -> "Text"
             else -> "File"
         }
-    }
 }

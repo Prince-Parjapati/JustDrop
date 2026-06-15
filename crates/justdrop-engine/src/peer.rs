@@ -2,9 +2,9 @@
 //!
 //! A Peer combines discovery information with trust state and presence.
 
+use justdrop_ble::advertisement::PresenceState;
 use justdrop_core::trust::TrustLevel;
 use justdrop_core::types::Platform;
-use justdrop_ble::advertisement::PresenceState;
 use std::net::SocketAddr;
 
 /// A discovered peer device.

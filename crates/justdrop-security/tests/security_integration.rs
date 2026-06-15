@@ -1,11 +1,14 @@
 //! Security integration tests: replay, tamper, wrong key, nonce uniqueness.
 
-use justdrop_security::crypto::{KeyExchangeInitiator, SessionCipher, verify_signature};
+use justdrop_security::crypto::{verify_signature, KeyExchangeInitiator};
 use ring::aead::NONCE_LEN;
 use ring::rand::SystemRandom;
 use ring::signature::{Ed25519KeyPair, KeyPair};
 
-fn create_session_pair() -> (justdrop_security::crypto::SessionKeys, justdrop_security::crypto::SessionKeys) {
+fn create_session_pair() -> (
+    justdrop_security::crypto::SessionKeys,
+    justdrop_security::crypto::SessionKeys,
+) {
     let initiator = KeyExchangeInitiator::new().unwrap();
     let responder = KeyExchangeInitiator::new().unwrap();
 
@@ -54,7 +57,10 @@ fn tampered_ciphertext_rejected() {
     data[0] ^= 0xFF;
 
     let result = decryptor.decrypt(&nonce, &mut data);
-    assert!(result.is_err(), "Tampered ciphertext must fail AEAD verification");
+    assert!(
+        result.is_err(),
+        "Tampered ciphertext must fail AEAD verification"
+    );
 }
 
 #[test]
@@ -95,7 +101,10 @@ fn nonce_uniqueness_across_messages() {
     let n2 = encryptor.encrypt(&mut d2).unwrap();
 
     assert_ne!(n1, n2, "Sequential nonces must differ");
-    assert_ne!(d1, d2, "Same plaintext must produce different ciphertext with different nonces");
+    assert_ne!(
+        d1, d2,
+        "Same plaintext must produce different ciphertext with different nonces"
+    );
 }
 
 #[test]
