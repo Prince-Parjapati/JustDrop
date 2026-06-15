@@ -10,9 +10,7 @@ use justdrop_core::error::ProtocolError;
 use justdrop_core::types::*;
 use justdrop_network::{connect, SecureTransport};
 use justdrop_security::{IdentityKeys, NoiseSession};
-use justdrop_storage::{
-    hash_file, ChunkWriter, FileChunker, ResumeManager, TransferResumeState,
-};
+use justdrop_storage::{hash_file, ChunkWriter, FileChunker, ResumeManager, TransferResumeState};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

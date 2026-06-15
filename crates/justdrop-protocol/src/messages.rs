@@ -3,9 +3,7 @@
 //! All messages are serialized with bincode for compact binary encoding,
 //! then encrypted and framed by the transport layer.
 
-use justdrop_core::types::{
-    ChunkAck, ChunkId, Sha256Hash, TransferManifest, TransferResponse,
-};
+use justdrop_core::types::{ChunkAck, ChunkId, Sha256Hash, TransferManifest, TransferResponse};
 use serde::{Deserialize, Serialize};
 
 /// Message tag constants.

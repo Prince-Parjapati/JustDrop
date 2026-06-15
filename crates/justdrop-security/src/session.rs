@@ -134,7 +134,7 @@ mod tests {
         (i_session, r_session)
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn encrypt_decrypt_roundtrip() {
         let (mut sender, mut receiver) = create_session_pair().await;
 
@@ -148,7 +148,7 @@ mod tests {
         assert_eq!(&decrypted, plaintext);
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn bidirectional_communication() {
         let (mut alice, mut bob) = create_session_pair().await;
 
@@ -163,7 +163,7 @@ mod tests {
         assert_eq!(pt2, b"msg from bob");
     }
 
-    #[tokio::test]
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn tampered_ciphertext_fails() {
         let (mut sender, mut receiver) = create_session_pair().await;
 

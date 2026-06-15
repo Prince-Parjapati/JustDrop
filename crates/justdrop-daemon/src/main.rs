@@ -332,10 +332,7 @@ async fn run_peers(config: Config, identity: Arc<IdentityKeys>) -> Result<()> {
     if peers.is_empty() {
         println!("No peers found.");
     } else {
-        println!(
-            "{:<20} {:<20} {:<15} ID",
-            "NAME", "ADDRESS", "PLATFORM"
-        );
+        println!("{:<20} {:<20} {:<15} ID", "NAME", "ADDRESS", "PLATFORM");
         println!("{}", "-".repeat(70));
         for peer in &peers {
             println!(

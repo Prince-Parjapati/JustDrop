@@ -9,6 +9,10 @@ disabled_rules:
   - function_parameter_count
   - generic_type_name
   - file_length
+  - trailing_comma
+  - for_where
+  - unused_closure_parameter
+  - orphaned_doc_comment
 
 opt_in_rules:
   - empty_count

@@ -60,6 +60,7 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.animation:animation")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    implementation("com.google.android.material:material:1.11.0")
 
     // Activity + Lifecycle
     implementation("androidx.activity:activity-compose:1.8.2")

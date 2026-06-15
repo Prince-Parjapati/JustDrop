@@ -46,10 +46,12 @@ impl ChunkWriter {
 
         // Ensure parent directory exists
         if let Some(parent) = dest_path.parent() {
-            tokio::fs::create_dir_all(parent).await.map_err(|e| StorageError::Io {
-                path: parent.to_path_buf(),
-                source: e,
-            })?;
+            tokio::fs::create_dir_all(parent)
+                .await
+                .map_err(|e| StorageError::Io {
+                    path: parent.to_path_buf(),
+                    source: e,
+                })?;
         }
 
         // Create or open the temp file, pre-allocate space
@@ -65,10 +67,12 @@ impl ChunkWriter {
             })?;
 
         // Pre-allocate the file to avoid fragmentation
-        file.set_len(file_size).await.map_err(|e| StorageError::Io {
-            path: temp_path.clone(),
-            source: e,
-        })?;
+        file.set_len(file_size)
+            .await
+            .map_err(|e| StorageError::Io {
+                path: temp_path.clone(),
+                source: e,
+            })?;
 
         let total_chunks = if file_size == 0 {
             1
@@ -249,10 +253,7 @@ async fn unique_path(path: &Path) -> PathBuf {
         return path.to_path_buf();
     }
 
-    let stem = path
-        .file_stem()
-        .and_then(|s| s.to_str())
-        .unwrap_or("file");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("file");
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
     let parent = path.parent().unwrap_or(Path::new("."));
 
@@ -290,7 +291,9 @@ mod tests {
         let dest = tmp.join("output.bin");
         let transfer_id = uuid::Uuid::new_v4();
 
-        let mut writer = ChunkWriter::new(transfer_id, 0, &dest, 256, 512).await.unwrap();
+        let mut writer = ChunkWriter::new(transfer_id, 0, &dest, 256, 512)
+            .await
+            .unwrap();
 
         assert!(!writer.is_complete());
         assert_eq!(writer.completed_count(), 0);
@@ -321,7 +324,9 @@ mod tests {
         let dest = tmp.join("output.bin");
         let transfer_id = uuid::Uuid::new_v4();
 
-        let mut writer = ChunkWriter::new(transfer_id, 0, &dest, 256, 768).await.unwrap();
+        let mut writer = ChunkWriter::new(transfer_id, 0, &dest, 256, 768)
+            .await
+            .unwrap();
 
         // Write chunks 0 and 2 (skip 1)
         writer.write_chunk(0, &[0xAA; 256]).await.unwrap();
