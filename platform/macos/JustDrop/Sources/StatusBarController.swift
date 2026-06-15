@@ -5,6 +5,7 @@ import Cocoa
 /// Places a small icon in the macOS menu bar (top-right, next to Wi-Fi,
 /// Bluetooth, etc.) that lets users toggle JustDrop on/off with a single
 /// click — similar to the AirDrop toggle in Control Center.
+@available(macOS 11.0, *)
 class StatusBarController: NSObject {
 
     private var statusItem: NSStatusItem?

@@ -4,7 +4,6 @@ import Cocoa
 ///
 /// On launch, installs a status bar icon that lets the user toggle
 /// the transfer engine on and off, like AirDrop in Control Center.
-@main
 class AppDelegate: NSObject, NSApplicationDelegate {
 
     private let statusBarController = StatusBarController()

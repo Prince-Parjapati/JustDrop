@@ -16,28 +16,49 @@ jobs:
         with:
           targets: aarch64-apple-darwin, x86_64-apple-darwin
 
-      - name: Build macOS daemon (Universal Menu Bar App)
+      - name: Build Rust static libraries
         run: |
           cargo build --release -p justdrop-ffi --target aarch64-apple-darwin
           cargo build --release -p justdrop-ffi --target x86_64-apple-darwin
-          
-          # Compile Swift app for Apple Silicon (arm64)
-          swiftc platform/macos/JustDrop/Sources/*.swift target/aarch64-apple-darwin/release/libjustdrop_ffi.a \
-            -o target/release/justdrop-macos-daemon-arm64 -target arm64-apple-macosx11.0 -sdk "$(xcrun --show-sdk-path)"
-          
-          # Compile Swift app for Intel (x86_64)
-          swiftc platform/macos/JustDrop/Sources/*.swift target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
-            -o target/release/justdrop-macos-daemon-x86_64 -target x86_64-apple-macosx11.0 -sdk "$(xcrun --show-sdk-path)"
-          
-          # Lipo them together to create a Universal binary
-          lipo -create -output target/release/justdrop-macos-daemon \
-            target/release/justdrop-macos-daemon-arm64 target/release/justdrop-macos-daemon-x86_64
+
+      - name: Build macOS .app bundle
+        run: |
+          APP_DIR="JustDrop.app/Contents"
+          mkdir -p "$APP_DIR/MacOS"
+          mkdir -p "$APP_DIR/Resources"
+
+          # Copy Info.plist
+          cp platform/macos/JustDrop/Info.plist "$APP_DIR/"
+
+          # Compile Swift for arm64
+          swiftc platform/macos/JustDrop/Sources/*.swift \
+            target/aarch64-apple-darwin/release/libjustdrop_ffi.a \
+            -o "$APP_DIR/MacOS/JustDrop-arm64" \
+            -target arm64-apple-macosx11.0 \
+            -sdk "$(xcrun --show-sdk-path)" \
+            -framework Cocoa \
+            -framework UserNotifications
+
+          # Compile Swift for x86_64
+          swiftc platform/macos/JustDrop/Sources/*.swift \
+            target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
+            -o "$APP_DIR/MacOS/JustDrop-x86_64" \
+            -target x86_64-apple-macosx11.0 \
+            -sdk "$(xcrun --show-sdk-path)" \
+            -framework Cocoa \
+            -framework UserNotifications
+
+          # Universal binary
+          lipo -create -output "$APP_DIR/MacOS/JustDrop" \
+            "$APP_DIR/MacOS/JustDrop-arm64" "$APP_DIR/MacOS/JustDrop-x86_64"
+          rm "$APP_DIR/MacOS/JustDrop-arm64" "$APP_DIR/MacOS/JustDrop-x86_64"
+
+          chmod +x "$APP_DIR/MacOS/JustDrop"
 
       - name: Package macOS Zip
         run: |
-          cp target/release/justdrop-macos-daemon ./
           chmod +x install.sh uninstall.sh
-          zip -r JustDrop-macOS-${{ github.ref_name }}.zip justdrop-macos-daemon install.sh uninstall.sh
+          zip -r JustDrop-macOS-${{ github.ref_name }}.zip JustDrop.app install.sh uninstall.sh
           
       - name: Upload macOS Artifact
         uses: actions/upload-artifact@v4
@@ -76,7 +97,7 @@ jobs:
         working-directory: platform/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug assembleRelease
+          ./gradlew assembleRelease
 
       - name: Rename Android APK
         run: |
@@ -109,16 +130,24 @@ jobs:
           body: |
             ### JustDrop ${{ github.ref_name }}
             
-            This release includes the latest renaming from RustDrop to **JustDrop** along with new rich notification features, Control Center/Menu Bar integrations, and automatic downloads folder configuration.
+            #### macOS Installation
+            1. Download `JustDrop-macOS-${{ github.ref_name }}.zip` and unzip it
+            2. Run `./install.sh` — this copies **JustDrop.app** to `/Applications` and starts it
+            3. Look for the ↔ icon in your **menu bar** (top-right, near Wi-Fi)
+            4. If macOS blocks it: **System Settings → Privacy & Security → Open Anyway**
             
-            #### Key Features:
-            - **Control Center / Menu Bar Toggle:** Quick access menu bar toggle for macOS and Control Center Quick Settings Tile for Android to easily turn transfer sharing on or off.
-            - **Rich AirDrop-Style Notifications:**
-              - Interactive notification popups with **Accept** or **Reject** buttons for transfers.
-              - Live progress bars for incoming/outgoing transfers.
-              - Completion alerts indicating exactly where the file has been saved.
-            - **Standard Storage Folder:** Automatically saves all received files to a dedicated `JustDrop` directory (`~/JustDrop` on macOS and `/sdcard/JustDrop` on Android) for quick and easy access.
-            - **Simple Uninstaller:** Added `uninstall.sh` and corresponding uninstallation guides in the README.md to easily remove the application.
+            #### Android Installation
+            1. Download `JustDrop-Android-${{ github.ref_name }}.apk` and install it
+            2. Pull down the notification shade and add the **JustDrop** Quick Settings tile
+            3. Use the native **Share** button in any app to send files to nearby devices
+            
+            #### Features
+            - **Menu Bar Toggle (macOS)** — turn sharing on/off with one click
+            - **Quick Settings Tile (Android)** — toggle from notification shade
+            - **Accept / Reject popups** for incoming transfers
+            - **Progress notifications** with speed indicator
+            - **Completion alerts** showing where files were saved
+            - Files saved to `~/JustDrop` (macOS) or `/sdcard/JustDrop` (Android)
           files: |
             *.zip
             *.apk
