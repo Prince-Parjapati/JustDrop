@@ -34,7 +34,12 @@ fi
 codesign --force --sign - /Applications/JustDrop.app 2>/dev/null || true
 /System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/JustDrop.app
 
-# 6. Create ~/JustDrop folder for received files
+# 6. Add to macOS Application Firewall to allow mDNS discovery
+echo "→ Allowing JustDrop through macOS Firewall..."
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /Applications/JustDrop.app 2>/dev/null || true
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /Applications/JustDrop.app 2>/dev/null || true
+
+# 7. Create ~/JustDrop folder for received files
 mkdir -p ~/JustDrop
 echo "  ✓ Created ~/JustDrop folder for received files"
 

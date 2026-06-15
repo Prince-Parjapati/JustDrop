@@ -47,7 +47,26 @@ class ShareActivity : ComponentActivity() {
 
         Log.i(TAG, "Sharing ${pendingFiles.size} files")
 
-        // Show device picker
+        // Check for Android 13+ nearby devices permission
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            if (checkSelfPermission(android.Manifest.permission.NEARBY_WIFI_DEVICES) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(arrayOf(android.Manifest.permission.NEARBY_WIFI_DEVICES), 1002)
+                return
+            }
+        }
+
+        showDevicePicker()
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode == 1002) {
+            // Proceed regardless, discovery might still work if network allows it
+            showDevicePicker()
+        }
+    }
+
+    private fun showDevicePicker() {
         val pickerIntent = Intent(this, DevicePickerActivity::class.java)
         startActivityForResult(pickerIntent, REQUEST_DEVICE_PICK)
     }

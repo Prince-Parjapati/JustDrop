@@ -2,9 +2,11 @@
 resolver = "2"
 members = [
     "crates/justdrop-core",
+    "crates/justdrop-ble",
     "crates/justdrop-discovery",
     "crates/justdrop-security",
     "crates/justdrop-network",
+    "crates/justdrop-transport",
     "crates/justdrop-protocol",
     "crates/justdrop-storage",
     "crates/justdrop-ffi",
@@ -22,30 +24,44 @@ rust-version = "1.75"
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.7", features = ["codec"] }
 
+# QUIC transport (Phase 1)
+quinn = "0.11"
+rustls = { version = "0.23", default-features = false, features = ["ring", "std"] }
+
 # Serialization
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-bincode = "1"
+postcard = { version = "1", features = ["alloc"] }
 toml = "0.8"
 
-# Networking
+# Networking (legacy, to be replaced by quinn)
 socket2 = { version = "0.5", features = ["all"] }
 
 # Zero-copy / low-level I/O
 bytes = "1"
 rustix = { version = "0.38", features = ["fs", "net"] }
 
-# mDNS discovery
+# mDNS discovery (legacy, retained for LAN fallback)
 mdns-sd = "0.20"
 
-# Noise protocol / security
-snow = "0.10"
+# Crypto (Phase 1: replaces snow)
+ring = "0.17"
 rand = "0.8"
 zeroize = { version = "1", features = ["derive"] }
 
-# Hashing / integrity
-sha2 = "0.10"
-blake2 = "0.10"
+# Noise protocol (legacy, to be replaced by ring)
+snow = "0.10"
+
+# Hashing
+blake3 = "1"
+sha2 = "0.10"       # legacy, to be replaced by blake3
+blake2 = "0.10"     # legacy fingerprint, to be replaced by blake3
+
+# Compression
+zstd = "0.13"
+
+# Database
+rusqlite = { version = "0.32", features = ["bundled"] }
 
 # Identity
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -61,8 +77,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 # CLI
 clap = { version = "4", features = ["derive"] }
 
-# FFI
-# jni = "0.21"
+# FFI (Phase 1: replaces manual C-ABI)
+# uniffi = "0.28"  # Uncomment when UniFFI migration begins
 
 # Misc
 dirs = "5"
@@ -70,6 +86,7 @@ chrono = { version = "0.4", features = ["serde"] }
 pin-project-lite = "0.2"
 futures = "0.3"
 parking_lot = "0.12"
+bincode = "1"
 
 [profile.release]
 lto = "thin"
@@ -79,3 +96,4 @@ opt-level = 3
 
 [profile.dev]
 opt-level = 1
+

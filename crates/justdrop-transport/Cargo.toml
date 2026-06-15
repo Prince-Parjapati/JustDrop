@@ -1,0 +1,22 @@
+[package]
+name = "justdrop-transport"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "QUIC transport layer for JustDrop file transfers"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+quinn = { workspace = true }
+rustls = { workspace = true }
+ring = { workspace = true }
+tokio = { workspace = true }
+bytes = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["test-util"] }
+tracing-subscriber = { workspace = true }

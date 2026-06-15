@@ -1,0 +1,19 @@
+[package]
+name = "justdrop-ble"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "BLE advertisement and handshake protocol definitions for JustDrop"
+
+[dependencies]
+justdrop-core = { path = "../justdrop-core" }
+serde = { workspace = true }
+postcard = { workspace = true }
+blake3 = { workspace = true }
+ring = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+rand = { workspace = true }

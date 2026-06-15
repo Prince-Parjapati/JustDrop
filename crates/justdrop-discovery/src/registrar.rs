@@ -63,11 +63,13 @@ impl ServiceRegistrar {
             .replace(|c: char| !c.is_alphanumeric() && c != '-', "-");
         let mdns_hostname = format!("{sanitized}.local.");
 
+        let local_ip = get_local_ip().unwrap_or_else(|| "0.0.0.0".to_string());
+
         let service_info = ServiceInfo::new(
             &self.service_type,
             &self.instance_name,
             &mdns_hostname,
-            "",   // Let the library determine the host IP
+            &local_ip,
             port,
             &props[..],
         )
@@ -141,6 +143,13 @@ mod hex {
 }
 
 pub use hex::{decode as hex_decode, encode as hex_encode};
+
+/// Uses a dummy UDP connection to reliably detect the device's local LAN IP address.
+fn get_local_ip() -> Option<String> {
+    let socket = std::net::UdpSocket::bind("0.0.0.0:0").ok()?;
+    socket.connect("8.8.8.8:80").ok()?;
+    socket.local_addr().ok().map(|addr| addr.ip().to_string())
+}
 
 #[cfg(test)]
 mod tests {
