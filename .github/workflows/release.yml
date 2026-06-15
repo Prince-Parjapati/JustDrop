@@ -32,20 +32,32 @@ jobs:
 
           # Compile Swift for arm64
           swiftc platform/macos/JustDrop/Sources/*.swift \
+            platform/macos/JustDrop/Sources/SwiftUI/*.swift \
+            platform/macos/JustDrop/Sources/Bluetooth/*.swift \
+            platform/macos/JustDrop/Sources/Network/*.swift \
             target/aarch64-apple-darwin/release/libjustdrop_ffi.a \
             -o "$APP_DIR/MacOS/JustDrop-arm64" \
-            -target arm64-apple-macosx11.0 \
+            -target arm64-apple-macosx13.0 \
             -sdk "$(xcrun --show-sdk-path)" \
             -framework Cocoa \
+            -framework SwiftUI \
+            -framework CoreBluetooth \
+            -framework CoreWLAN \
             -framework UserNotifications
 
           # Compile Swift for x86_64
           swiftc platform/macos/JustDrop/Sources/*.swift \
+            platform/macos/JustDrop/Sources/SwiftUI/*.swift \
+            platform/macos/JustDrop/Sources/Bluetooth/*.swift \
+            platform/macos/JustDrop/Sources/Network/*.swift \
             target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
             -o "$APP_DIR/MacOS/JustDrop-x86_64" \
-            -target x86_64-apple-macosx11.0 \
+            -target x86_64-apple-macosx13.0 \
             -sdk "$(xcrun --show-sdk-path)" \
             -framework Cocoa \
+            -framework SwiftUI \
+            -framework CoreBluetooth \
+            -framework CoreWLAN \
             -framework UserNotifications
 
           # Universal binary
@@ -182,6 +194,15 @@ jobs:
             - **Progress notifications** with speed indicator
             - **Completion alerts** showing where files were saved
             - Files saved to `~/JustDrop` (macOS) or `/sdcard/JustDrop` (Android)
+            
+            #### v2.0 Changes
+            - QUIC transport (replaces TCP)
+            - Ed25519 identity + ChaCha20 encryption
+            - BLAKE3 hashing + Zstd compression
+            - BLE discovery support (CoreBluetooth / Android BLE)
+            - SwiftUI menu bar (macOS 13+)
+            - Jetpack Compose Material 3 (Android)
+            - UniFFI generated bindings
           files: |
             *.zip
             *.apk

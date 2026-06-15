@@ -1,209 +1,143 @@
 import Cocoa
+import SwiftUI
 
+/// Share Extension for macOS — receives files from Finder's Share menu.
 class ShareViewController: NSViewController {
-
-    private var selectedFiles: [String] = []
-    private var peers: [[String: Any]] = []
-    private var tableView: NSTableView!
-    private var statusLabel: NSTextField!
-    private var container: NSStackView!
-    private var scrollView: NSScrollView!
 
     override var nibName: NSNib.Name? { nil }
 
     override func loadView() {
-        self.view = NSView(frame: NSRect(x: 0, y: 0, width: 400, height: 300))
+        let hostView = NSHostingView(rootView: ShareExtensionView(
+            onSend: { [weak self] peerId in
+                self?.sendFiles(to: peerId)
+            },
+            onCancel: { [weak self] in
+                self?.cancel()
+            }
+        ))
+        hostView.frame = NSRect(x: 0, y: 0, width: 360, height: 400)
+        self.view = hostView
     }
 
-    override func viewDidLoad() {
-        super.viewDidLoad()
-
-        extractSharedItems()
-
-        let bridge = JustBridge.shared
-        if let configPath = createTempConfig() {
-            _ = bridge.initialize(configPath: configPath)
-        } else {
-            _ = bridge.initialize()
+    private func sendFiles(to peerId: String) {
+        guard let items = extensionContext?.inputItems as? [NSExtensionItem] else {
+            cancel()
+            return
         }
-        _ = bridge.startDiscovery()
 
-        setupUI()
-        loadPeers()
-    }
+        var filePaths: [String] = []
 
-    private func createTempConfig() -> String? {
-        let toml = """
-        [network]
-        listen_port = 0
-        """
-        let tempDir = FileManager.default.temporaryDirectory
-        let fileURL = tempDir.appendingPathComponent("justdrop_share_config_\(UUID().uuidString).toml")
-        do {
-            try toml.write(to: fileURL, atomically: true, encoding: .utf8)
-            return fileURL.path
-        } catch {
-            return nil
-        }
-    }
-
-    private func extractSharedItems() {
-        guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { return }
+        let group = DispatchGroup()
         for item in items {
-            guard let attachments = item.attachments else { continue }
-            for provider in attachments {
-                if provider.hasItemConformingToTypeIdentifier("public.file-url") {
-                    provider.loadItem(
-                        forTypeIdentifier: "public.file-url",
-                        options: nil
-                    ) { [weak self] item, error in
-                        if let url = item as? URL {
-                            self?.selectedFiles.append(url.path)
+            for attachment in item.attachments ?? [] {
+                if attachment.hasItemConformingToTypeIdentifier("public.file-url") {
+                    group.enter()
+                    attachment.loadItem(forTypeIdentifier: "public.file-url", options: nil) { url, error in
+                        if let fileURL = url as? URL {
+                            filePaths.append(fileURL.path)
                         }
+                        group.leave()
                     }
                 }
             }
         }
-    }
 
-    private var timer: Timer?
-
-    override func viewDidDisappear() {
-        super.viewDidDisappear()
-        timer?.invalidate()
-    }
-
-    private func loadPeers() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            let newPeers = JustBridge.shared.getPeers()
-            if self.peers.count != newPeers.count || String(describing: self.peers) != String(describing: newPeers) {
-                self.peers = newPeers
-                self.updateVisibility()
+        group.notify(queue: .main) { [weak self] in
+            if !filePaths.isEmpty {
+                // Encode and send via FFI
+                if let jsonData = try? JSONSerialization.data(withJSONObject: filePaths),
+                   let jsonStr = String(data: jsonData, encoding: .utf8) {
+                    justdrop_send_files(peerId, jsonStr)
+                }
             }
-        }
-        timer?.fire()
-    }
-
-    private func setupUI() {
-        container = NSStackView(frame: view.bounds)
-        container.orientation = .vertical
-        container.spacing = 12
-        container.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
-        container.translatesAutoresizingMaskIntoConstraints = false
-
-        let title = NSTextField(labelWithString: "Send with JustDrop")
-        title.font = .boldSystemFont(ofSize: 16)
-        container.addArrangedSubview(title)
-
-        statusLabel = NSTextField(labelWithString: "Searching for nearby devices...\nMake sure JustDrop is turned on.")
-        statusLabel.alignment = .center
-        statusLabel.font = .systemFont(ofSize: 14)
-        statusLabel.textColor = .secondaryLabelColor
-        container.addArrangedSubview(statusLabel)
-
-        scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 160))
-        tableView = NSTableView()
-
-        let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-        nameColumn.title = "Device"
-        nameColumn.width = 200
-        tableView.addTableColumn(nameColumn)
-
-        let platformColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("platform"))
-        platformColumn.title = "Platform"
-        platformColumn.width = 100
-        tableView.addTableColumn(platformColumn)
-
-        tableView.delegate = self
-        tableView.dataSource = self
-        tableView.doubleAction = #selector(sendToSelected)
-
-        scrollView.documentView = tableView
-        scrollView.hasVerticalScroller = true
-        scrollView.heightAnchor.constraint(equalToConstant: 160).isActive = true
-        container.addArrangedSubview(scrollView)
-
-        let buttonStack = NSStackView()
-        buttonStack.orientation = .horizontal
-        buttonStack.spacing = 8
-
-        let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel))
-        buttonStack.addArrangedSubview(cancelButton)
-
-        let sendButton = NSButton(title: "Send", target: self, action: #selector(sendToSelected))
-        sendButton.bezelStyle = .rounded
-        sendButton.keyEquivalent = "\r"
-        buttonStack.addArrangedSubview(sendButton)
-
-        container.addArrangedSubview(buttonStack)
-
-        view.addSubview(container)
-        NSLayoutConstraint.activate([
-            container.topAnchor.constraint(equalTo: view.topAnchor),
-            container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-        ])
-
-        updateVisibility()
-    }
-
-    private func updateVisibility() {
-        if peers.isEmpty {
-            statusLabel.isHidden = false
-            scrollView.isHidden = true
-        } else {
-            statusLabel.isHidden = true
-            scrollView.isHidden = false
-            tableView.reloadData()
+            self?.extensionContext?.completeRequest(returningItems: nil)
         }
     }
 
-    @objc private func sendToSelected() {
-        let row = tableView.selectedRow
-        guard row >= 0 && row < peers.count else { return }
-
-        let peer = peers[row]
-        guard let peerId = peer["id"] as? String else { return }
-
-        let success = JustBridge.shared.sendFiles(peerId: peerId, filePaths: selectedFiles)
-        if success {
-            NSLog("JustDrop Share: Transfer initiated to \(peerId)")
-        }
-
-        extensionContext?.completeRequest(returningItems: nil)
-    }
-
-    @objc private func cancel() {
-        extensionContext?.cancelRequest(withError: NSError(
-            domain: "com.justdrop.share",
-            code: 0,
-            userInfo: [NSLocalizedDescriptionKey: "User cancelled"]
-        ))
+    private func cancel() {
+        extensionContext?.cancelRequest(withError: NSError(domain: "com.justdrop.share", code: 0))
     }
 }
 
-extension ShareViewController: NSTableViewDataSource, NSTableViewDelegate {
-    func numberOfRows(in tableView: NSTableView) -> Int {
-        return peers.count
+/// SwiftUI view for the share extension sheet.
+struct ShareExtensionView: View {
+    let onSend: (String) -> Void
+    let onCancel: () -> Void
+
+    @State private var peers: [SharePeer] = []
+    @State private var isScanning = true
+    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Text("Send with JustDrop")
+                .font(.headline)
+
+            if peers.isEmpty {
+                VStack(spacing: 8) {
+                    ProgressView()
+                    Text("Looking for devices...")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List(peers) { peer in
+                    Button {
+                        onSend(peer.id)
+                    } label: {
+                        HStack {
+                            Image(systemName: peer.icon)
+                            VStack(alignment: .leading) {
+                                Text(peer.name).fontWeight(.medium)
+                                Text(peer.platform)
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.secondary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+
+            Button("Cancel", action: onCancel)
+                .keyboardShortcut(.escape)
+        }
+        .padding()
+        .frame(width: 320, height: 360)
+        .onReceive(timer) { _ in
+            refreshPeers()
+        }
     }
 
-    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        let peer = peers[row]
-        let text: String
+    private func refreshPeers() {
+        guard let json = justdrop_get_peers() else { return }
+        let str = String(cString: json)
+        guard let data = str.data(using: .utf8),
+              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
 
-        switch tableColumn?.identifier.rawValue {
-        case "name":
-            text = peer["name"] as? String ?? "Unknown"
-        case "platform":
-            text = peer["platform"] as? String ?? "Unknown"
-        default:
-            return nil
+        peers = arr.compactMap { dict in
+            guard let id = dict["id"] as? String,
+                  let name = dict["name"] as? String else { return nil }
+            let platform = dict["platform"] as? String ?? "Unknown"
+            return SharePeer(id: id, name: name, platform: platform)
         }
+    }
+}
 
-        let cell = NSTextField(labelWithString: text)
-        cell.font = .systemFont(ofSize: 13)
-        return cell
+struct SharePeer: Identifiable {
+    let id: String
+    let name: String
+    let platform: String
+
+    var icon: String {
+        switch platform {
+        case "MacOS": return "laptopcomputer"
+        case "Android": return "candybarphone"
+        default: return "desktopcomputer"
+        }
     }
 }

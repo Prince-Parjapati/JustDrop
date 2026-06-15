@@ -20,6 +20,7 @@ use uuid::Uuid;
 // Legacy modules retained for backward compat during migration
 pub mod android;
 pub mod macos;
+pub mod legacy_c_abi;
 
 // ── UniFFI Type Mappings ────────────────────────────────────────────
 

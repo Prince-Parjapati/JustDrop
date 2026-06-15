@@ -31,20 +31,11 @@ It uses mDNS for peer discovery and establishes direct, end-to-end encrypted TCP
 Download the latest `JustDrop-Android-*.apk` from the [Releases](../../releases) page and install it on your device.
 
 ### macOS
-Download `JustDrop-macOS-*.zip` from the [Releases](../../releases) page. Extract it and run the install script:
-```bash
-unzip JustDrop-macOS-*.zip
-chmod +x install.sh
-./install.sh
-```
+Download `JustDrop-macOS.zip` from the [Releases](../../releases) page and extract it.
 
-This will:
-1. Install **JustDrop.app** to `/Applications`
-2. Create `~/JustDrop` folder for received files
-3. Set up auto-start on login
-4. Launch JustDrop immediately
-
-After installation, look for the **↔ icon** in your **menu bar** (top-right corner, near Wi-Fi). Click it to turn file sharing on or off.
+1. Drag **JustDrop.app** into your `/Applications` folder.
+2. Double-click **JustDrop** in your Applications folder to launch it.
+3. A **↔ icon** will appear in your **menu bar** (top-right corner).
 
 > **If macOS shows a security warning:**
 > Go to **System Settings → Privacy & Security** and click **"Open Anyway"**.
@@ -70,18 +61,9 @@ Go to **Settings → Apps → JustDrop → Uninstall**, or long-press the app ic
 Your received files in `/sdcard/JustDrop` will not be deleted automatically.
 
 ### macOS
-Run the included `uninstall.sh` script:
-```bash
-chmod +x uninstall.sh
-./uninstall.sh
-```
-
-This will:
-1. Quit JustDrop
-2. Remove the LaunchAgent (auto-start on login)
-3. Remove JustDrop.app from `/Applications`
-4. Remove configuration and encryption keys
-5. Remove log files
+1. Quit JustDrop from the menu bar icon (**Quit JustDrop**).
+2. Open your `/Applications` folder and drag **JustDrop.app** to the Trash.
+3. Empty the Trash.
 
 Your received files in `~/JustDrop` will not be deleted automatically. Remove that folder manually:
 ```bash
@@ -98,15 +80,12 @@ rm -rf ~/JustDrop
 
 ### Build macOS App
 ```bash
-# Build the Rust static library
+# Build the Rust FFI static library
 cargo build --release -p justdrop-ffi
 
-# Compile Swift menu bar app linked to the Rust library
-swiftc platform/macos/JustDrop/Sources/*.swift \
-  target/release/libjustdrop_ffi.a \
-  -o JustDrop \
-  -framework Cocoa \
-  -framework UserNotifications
+# Build the macOS SwiftUI App using Swift Package Manager
+cd platform/macos/JustDrop
+swift build -c release
 ```
 
 ### Build Android Libraries & APK
