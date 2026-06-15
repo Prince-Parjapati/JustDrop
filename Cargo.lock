@@ -1057,12 +1057,15 @@ name = "justdrop-security"
 version = "0.1.0"
 dependencies = [
  "blake2",
+ "blake3",
  "dirs",
  "justdrop-core",
  "rand 0.8.6",
+ "ring",
  "serde",
  "serde_json",
  "snow",
+ "thiserror 2.0.18",
  "tokio",
  "tracing",
  "zeroize",

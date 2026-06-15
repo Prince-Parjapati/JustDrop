@@ -9,6 +9,8 @@ description = "Noise protocol handshake and encrypted session management for Jus
 [dependencies]
 justdrop-core = { path = "../justdrop-core" }
 snow = "0.10"
+ring = { workspace = true }
+blake3 = { workspace = true }
 rand = { workspace = true }
 zeroize = { workspace = true }
 blake2 = { workspace = true }
@@ -16,6 +18,7 @@ tracing = { workspace = true }
 dirs = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+thiserror = { workspace = true }
 
 [dev-dependencies]
 tokio = { workspace = true }
