@@ -27,7 +27,7 @@ jobs:
           
           # Compile Swift app for Intel (x86_64)
           swiftc platform/macos/JustDrop/Sources/*.swift target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
-            -o target/release/justdrop-macos-daemon-x86_64 -target x86_64-apple-macosx10.13 -sdk "$(xcrun --show-sdk-path)"
+            -o target/release/justdrop-macos-daemon-x86_64 -target x86_64-apple-macosx11.0 -sdk "$(xcrun --show-sdk-path)"
           
           # Lipo them together to create a Universal binary
           lipo -create -output target/release/justdrop-macos-daemon \
