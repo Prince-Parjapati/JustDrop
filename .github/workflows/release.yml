@@ -68,11 +68,15 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug assembleRelease
 
+      - name: Rename Android APK
+        run: |
+          cp platform/android/app/build/outputs/apk/release/app-release-unsigned.apk JustDrop-Android-${{ github.ref_name }}.apk
+
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
           name: android-release
-          path: platform/android/app/build/outputs/apk/release/app-release-unsigned.apk
+          path: JustDrop-Android-${{ github.ref_name }}.apk
 
   publish:
     needs: [build-macos, build-android]
@@ -91,6 +95,20 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
+          name: JustDrop ${{ github.ref_name }}
+          body: |
+            ### JustDrop ${{ github.ref_name }}
+            
+            This release includes the latest renaming from RustDrop to **JustDrop** along with new rich notification features, Control Center/Menu Bar integrations, and automatic downloads folder configuration.
+            
+            #### Key Features:
+            - **Control Center / Menu Bar Toggle:** Quick access menu bar toggle for macOS and Control Center Quick Settings Tile for Android to easily turn transfer sharing on or off.
+            - **Rich AirDrop-Style Notifications:**
+              - Interactive notification popups with **Accept** or **Reject** buttons for transfers.
+              - Live progress bars for incoming/outgoing transfers.
+              - Completion alerts indicating exactly where the file has been saved.
+            - **Standard Storage Folder:** Automatically saves all received files to a dedicated `JustDrop` directory (`~/JustDrop` on macOS and `/sdcard/JustDrop` on Android) for quick and easy access.
+            - **Simple Uninstaller:** Added `uninstall.sh` and corresponding uninstallation guides in the README.md to easily remove the application.
           files: |
             *.zip
             *.apk
