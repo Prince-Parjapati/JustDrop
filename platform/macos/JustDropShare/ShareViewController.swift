@@ -1,15 +1,13 @@
 import Cocoa
 
-/// macOS Share Extension for JustDrop.
-///
-/// Appears in the system Share menu when files are selected in Finder,
-/// Safari, or other apps. Shows a device picker and sends files via
-/// the Rust engine.
 class ShareViewController: NSViewController {
 
     private var selectedFiles: [String] = []
     private var peers: [[String: Any]] = []
     private var tableView: NSTableView!
+    private var statusLabel: NSTextField!
+    private var container: NSStackView!
+    private var scrollView: NSScrollView!
 
     override var nibName: NSNib.Name? { nil }
 
@@ -20,11 +18,8 @@ class ShareViewController: NSViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        // Extract shared items
         extractSharedItems()
 
-        // Initialize Rust engine with an ephemeral port (listen_port = 0)
-        // so it doesn't conflict with the main JustDrop daemon on port 42420.
         let bridge = JustBridge.shared
         if let configPath = createTempConfig() {
             _ = bridge.initialize(configPath: configPath)
@@ -33,11 +28,8 @@ class ShareViewController: NSViewController {
         }
         _ = bridge.startDiscovery()
 
-        // Wait briefly for discovery, then show peers
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.loadPeers()
-            self?.setupUI()
-        }
+        setupUI()
+        loadPeers()
     }
 
     private func createTempConfig() -> String? {
@@ -57,7 +49,6 @@ class ShareViewController: NSViewController {
 
     private func extractSharedItems() {
         guard let items = extensionContext?.inputItems as? [NSExtensionItem] else { return }
-
         for item in items {
             guard let attachments = item.attachments else { continue }
             for provider in attachments {
@@ -75,65 +66,64 @@ class ShareViewController: NSViewController {
         }
     }
 
+    private var timer: Timer?
+
+    override func viewDidDisappear() {
+        super.viewDidDisappear()
+        timer?.invalidate()
+    }
+
     private func loadPeers() {
-        peers = JustBridge.shared.getPeers()
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            let newPeers = JustBridge.shared.getPeers()
+            if self.peers.count != newPeers.count || String(describing: self.peers) != String(describing: newPeers) {
+                self.peers = newPeers
+                self.updateVisibility()
+            }
+        }
+        timer?.fire()
     }
 
     private func setupUI() {
-        let container = NSStackView(frame: view.bounds)
+        container = NSStackView(frame: view.bounds)
         container.orientation = .vertical
         container.spacing = 12
         container.edgeInsets = NSEdgeInsets(top: 16, left: 16, bottom: 16, right: 16)
+        container.translatesAutoresizingMaskIntoConstraints = false
 
-        // Title
         let title = NSTextField(labelWithString: "Send with JustDrop")
         title.font = .boldSystemFont(ofSize: 16)
         container.addArrangedSubview(title)
 
-        // File count
-        let fileLabel = NSTextField(
-            labelWithString: "\(selectedFiles.count) file(s) selected"
-        )
-        fileLabel.font = .systemFont(ofSize: 12)
-        fileLabel.textColor = .secondaryLabelColor
-        container.addArrangedSubview(fileLabel)
+        statusLabel = NSTextField(labelWithString: "Searching for nearby devices...\nMake sure JustDrop is turned on.")
+        statusLabel.alignment = .center
+        statusLabel.font = .systemFont(ofSize: 14)
+        statusLabel.textColor = .secondaryLabelColor
+        container.addArrangedSubview(statusLabel)
 
-        if peers.isEmpty {
-            let empty = NSTextField(
-                labelWithString: "No devices found.\nEnsure both devices are on the same network."
-            )
-            empty.font = .systemFont(ofSize: 14)
-            empty.alignment = .center
-            container.addArrangedSubview(empty)
-        } else {
-            // Peer list
-            let scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 160))
-            tableView = NSTableView()
+        scrollView = NSScrollView(frame: NSRect(x: 0, y: 0, width: 360, height: 160))
+        tableView = NSTableView()
 
-            let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
-            nameColumn.title = "Device"
-            nameColumn.width = 200
-            tableView.addTableColumn(nameColumn)
+        let nameColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
+        nameColumn.title = "Device"
+        nameColumn.width = 200
+        tableView.addTableColumn(nameColumn)
 
-            let platformColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("platform"))
-            platformColumn.title = "Platform"
-            platformColumn.width = 100
-            tableView.addTableColumn(platformColumn)
+        let platformColumn = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("platform"))
+        platformColumn.title = "Platform"
+        platformColumn.width = 100
+        tableView.addTableColumn(platformColumn)
 
-            tableView.delegate = self
-            tableView.dataSource = self
-            tableView.doubleAction = #selector(sendToSelected)
+        tableView.delegate = self
+        tableView.dataSource = self
+        tableView.doubleAction = #selector(sendToSelected)
 
-            scrollView.documentView = tableView
-            scrollView.hasVerticalScroller = true
+        scrollView.documentView = tableView
+        scrollView.hasVerticalScroller = true
+        scrollView.heightAnchor.constraint(equalToConstant: 160).isActive = true
+        container.addArrangedSubview(scrollView)
 
-            let constraint = scrollView.heightAnchor.constraint(equalToConstant: 160)
-            constraint.isActive = true
-
-            container.addArrangedSubview(scrollView)
-        }
-
-        // Buttons
         let buttonStack = NSStackView()
         buttonStack.orientation = .horizontal
         buttonStack.spacing = 8
@@ -141,27 +131,37 @@ class ShareViewController: NSViewController {
         let cancelButton = NSButton(title: "Cancel", target: self, action: #selector(cancel))
         buttonStack.addArrangedSubview(cancelButton)
 
-        if !peers.isEmpty {
-            let sendButton = NSButton(title: "Send", target: self, action: #selector(sendToSelected))
-            sendButton.bezelStyle = .rounded
-            sendButton.keyEquivalent = "\r"
-            buttonStack.addArrangedSubview(sendButton)
-        }
+        let sendButton = NSButton(title: "Send", target: self, action: #selector(sendToSelected))
+        sendButton.bezelStyle = .rounded
+        sendButton.keyEquivalent = "\r"
+        buttonStack.addArrangedSubview(sendButton)
 
         container.addArrangedSubview(buttonStack)
 
         view.addSubview(container)
-        container.translatesAutoresizingMaskIntoConstraints = false
         NSLayoutConstraint.activate([
             container.topAnchor.constraint(equalTo: view.topAnchor),
             container.bottomAnchor.constraint(equalTo: view.bottomAnchor),
             container.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             container.trailingAnchor.constraint(equalTo: view.trailingAnchor),
         ])
+
+        updateVisibility()
+    }
+
+    private func updateVisibility() {
+        if peers.isEmpty {
+            statusLabel.isHidden = false
+            scrollView.isHidden = true
+        } else {
+            statusLabel.isHidden = true
+            scrollView.isHidden = false
+            tableView.reloadData()
+        }
     }
 
     @objc private func sendToSelected() {
-        let row = tableView?.selectedRow ?? -1
+        let row = tableView.selectedRow
         guard row >= 0 && row < peers.count else { return }
 
         let peer = peers[row]
@@ -170,8 +170,6 @@ class ShareViewController: NSViewController {
         let success = JustBridge.shared.sendFiles(peerId: peerId, filePaths: selectedFiles)
         if success {
             NSLog("JustDrop Share: Transfer initiated to \(peerId)")
-        } else {
-            NSLog("JustDrop Share: Transfer failed")
         }
 
         extensionContext?.completeRequest(returningItems: nil)
@@ -186,18 +184,12 @@ class ShareViewController: NSViewController {
     }
 }
 
-// MARK: - NSTableViewDataSource & Delegate
-
 extension ShareViewController: NSTableViewDataSource, NSTableViewDelegate {
     func numberOfRows(in tableView: NSTableView) -> Int {
         return peers.count
     }
 
-    func tableView(
-        _ tableView: NSTableView,
-        viewFor tableColumn: NSTableColumn?,
-        row: Int
-    ) -> NSView? {
+    func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
         let peer = peers[row]
         let text: String
 

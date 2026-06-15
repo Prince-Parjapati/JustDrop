@@ -269,8 +269,10 @@ pub unsafe extern "C" fn justdrop_free_string(ptr: *mut c_char) {
 pub extern "C" fn justdrop_shutdown() -> c_int {
     let mut guard = ENGINE.lock();
     if let Some(engine) = guard.take() {
-        drop(engine);
-        info!("JustDrop engine shut down");
+        std::thread::spawn(move || {
+            drop(engine);
+            info!("JustDrop engine shut down");
+        });
     }
     0
 }

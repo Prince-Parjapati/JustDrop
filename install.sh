@@ -20,7 +20,21 @@ echo "→ Copying JustDrop.app to /Applications..."
 cp -R JustDrop.app /Applications/
 echo "  ✓ Installed to /Applications/JustDrop.app"
 
-# 5. Create ~/JustDrop folder for received files
+# 5. Ad-hoc sign locally to satisfy Gatekeeper and LaunchServices
+echo "→ Applying local code signatures..."
+if [ -d "/Applications/JustDrop.app/Contents/PlugIns/JustDropShare.appex" ]; then
+    codesign -d --entitlements :- /Applications/JustDrop.app/Contents/PlugIns/JustDropShare.appex > /tmp/justdrop_ent.plist 2>/dev/null || true
+    if [ -s /tmp/justdrop_ent.plist ]; then
+        codesign --force --sign - --entitlements /tmp/justdrop_ent.plist /Applications/JustDrop.app/Contents/PlugIns/JustDropShare.appex 2>/dev/null || true
+    else
+        codesign --force --sign - /Applications/JustDrop.app/Contents/PlugIns/JustDropShare.appex 2>/dev/null || true
+    fi
+    rm -f /tmp/justdrop_ent.plist
+fi
+codesign --force --sign - /Applications/JustDrop.app 2>/dev/null || true
+/System/Library/Frameworks/CoreServices.framework/Versions/A/Frameworks/LaunchServices.framework/Versions/A/Support/lsregister -f /Applications/JustDrop.app
+
+# 6. Create ~/JustDrop folder for received files
 mkdir -p ~/JustDrop
 echo "  ✓ Created ~/JustDrop folder for received files"
 

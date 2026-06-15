@@ -38,16 +38,58 @@ class DevicePickerActivity : Activity() {
         }
         layout.addView(title)
 
-        // Get peers from Rust engine
-        val peersJson = JustBridge.getPeers()
-        if (peersJson.isNullOrEmpty()) {
+        // Dynamic layout for peers
+        val peersContainer = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        layout.addView(peersContainer)
+
+        // Poll for peers periodically
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        var currentPeersJson = ""
+
+        val runnable = object : Runnable {
+            override fun run() {
+                val peersJson = JustBridge.getPeers()
+                if (peersJson != currentPeersJson) {
+                    currentPeersJson = peersJson ?: ""
+                    updatePeersUI(peersContainer, currentPeersJson)
+                }
+                handler.postDelayed(this, 1000)
+            }
+        }
+        handler.post(runnable)
+
+        // Cancel button
+        val cancel = Button(this).apply {
+            text = "Cancel"
+            layoutParams = LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT
+            ).apply { setMargins(0, 24, 0, 0) }
+            setOnClickListener {
+                handler.removeCallbacks(runnable)
+                setResult(RESULT_CANCELED)
+                finish()
+            }
+        }
+        layout.addView(cancel)
+
+        val scroll = ScrollView(this)
+        scroll.addView(layout)
+        setContentView(scroll)
+    }
+
+    private fun updatePeersUI(container: LinearLayout, peersJson: String) {
+        container.removeAllViews()
+        if (peersJson.isEmpty() || peersJson == "[]") {
             val empty = TextView(this).apply {
-                text = "No devices found.\nMake sure both devices are on the same network."
+                text = "Looking for nearby devices...\nMake sure both devices have JustDrop turned on."
                 textSize = 16f
                 gravity = Gravity.CENTER
                 setPadding(0, 48, 0, 48)
             }
-            layout.addView(empty)
+            container.addView(empty)
         } else {
             try {
                 val peers = JSONArray(peersJson)
@@ -78,25 +120,11 @@ class DevicePickerActivity : Activity() {
                             finish()
                         }
                     }
-                    layout.addView(button)
+                    container.addView(button)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to parse peers JSON", e)
             }
         }
-
-        // Cancel button
-        val cancel = Button(this).apply {
-            text = "Cancel"
-            setOnClickListener {
-                setResult(RESULT_CANCELED)
-                finish()
-            }
-        }
-        layout.addView(cancel)
-
-        val scroll = ScrollView(this)
-        scroll.addView(layout)
-        setContentView(scroll)
     }
 }
