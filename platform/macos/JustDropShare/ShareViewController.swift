@@ -23,15 +23,35 @@ class ShareViewController: NSViewController {
         // Extract shared items
         extractSharedItems()
 
-        // Initialize Rust engine (if not already running via daemon)
+        // Initialize Rust engine with an ephemeral port (listen_port = 0)
+        // so it doesn't conflict with the main JustDrop daemon on port 42420.
         let bridge = JustBridge.shared
-        _ = bridge.initialize()
+        if let configPath = createTempConfig() {
+            _ = bridge.initialize(configPath: configPath)
+        } else {
+            _ = bridge.initialize()
+        }
         _ = bridge.startDiscovery()
 
         // Wait briefly for discovery, then show peers
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
             self?.loadPeers()
             self?.setupUI()
+        }
+    }
+
+    private func createTempConfig() -> String? {
+        let toml = """
+        [network]
+        listen_port = 0
+        """
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent("justdrop_share_config_\(UUID().uuidString).toml")
+        do {
+            try toml.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL.path
+        } catch {
+            return nil
         }
     }
 

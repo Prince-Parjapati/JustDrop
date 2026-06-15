@@ -55,6 +55,40 @@ jobs:
 
           chmod +x "$APP_DIR/MacOS/JustDrop"
 
+          # Build Share Extension
+          SHARE_DIR="$APP_DIR/PlugIns/JustDropShare.appex/Contents"
+          mkdir -p "$SHARE_DIR/MacOS"
+          mkdir -p "$SHARE_DIR/Resources"
+
+          cp platform/macos/JustDropShare/Info.plist "$SHARE_DIR/"
+
+          swiftc platform/macos/JustDropShare/ShareViewController.swift \
+            platform/macos/JustDrop/Sources/JustBridge.swift \
+            target/aarch64-apple-darwin/release/libjustdrop_ffi.a \
+            -o "$SHARE_DIR/MacOS/JustDropShare-arm64" \
+            -target arm64-apple-macosx11.0 \
+            -sdk "$(xcrun --show-sdk-path)" \
+            -framework Cocoa \
+            -framework AppKit \
+            -Xlinker -e -Xlinker _NSExtensionMain
+
+          swiftc platform/macos/JustDropShare/ShareViewController.swift \
+            platform/macos/JustDrop/Sources/JustBridge.swift \
+            target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
+            -o "$SHARE_DIR/MacOS/JustDropShare-x86_64" \
+            -target x86_64-apple-macosx11.0 \
+            -sdk "$(xcrun --show-sdk-path)" \
+            -framework Cocoa \
+            -framework AppKit \
+            -Xlinker -e -Xlinker _NSExtensionMain
+
+          lipo -create -output "$SHARE_DIR/MacOS/JustDropShare" \
+            "$SHARE_DIR/MacOS/JustDropShare-arm64" "$SHARE_DIR/MacOS/JustDropShare-x86_64"
+          rm "$SHARE_DIR/MacOS/JustDropShare-arm64" "$SHARE_DIR/MacOS/JustDropShare-x86_64"
+          chmod +x "$SHARE_DIR/MacOS/JustDropShare"
+
+          codesign --force --sign - --entitlements platform/macos/JustDropShare/JustDropShare.entitlements "$APP_DIR/PlugIns/JustDropShare.appex"
+
       - name: Package macOS Zip
         run: |
           chmod +x install.sh uninstall.sh
