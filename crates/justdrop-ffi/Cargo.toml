@@ -21,3 +21,4 @@ tracing-subscriber = { workspace = true }
 parking_lot = { workspace = true }
 serde_json = { workspace = true }
 uuid = { workspace = true }
+jni = "0.21.1"
