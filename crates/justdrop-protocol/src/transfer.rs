@@ -329,11 +329,7 @@ impl SendTransfer {
                 let elapsed = start_time.elapsed().as_secs_f64().max(0.001);
                 let speed_bps = (bytes_sent as f64 / elapsed) as u64;
                 let remaining = total_bytes.saturating_sub(bytes_sent);
-                let eta = if speed_bps > 0 {
-                    Some(remaining / speed_bps)
-                } else {
-                    None
-                };
+                let eta = remaining.checked_div(speed_bps);
 
                 let _ = event_tx
                     .send(TransferEvent::Progress(TransferProgress {
@@ -541,11 +537,7 @@ impl RecvTransfer {
                     let elapsed = start_time.elapsed().as_secs_f64().max(0.001);
                     let speed_bps = (bytes_received as f64 / elapsed) as u64;
                     let remaining = total_bytes.saturating_sub(bytes_received);
-                    let eta = if speed_bps > 0 {
-                        Some(remaining / speed_bps)
-                    } else {
-                        None
-                    };
+                    let eta = remaining.checked_div(speed_bps);
 
                     let _ = event_tx
                         .send(TransferEvent::Progress(TransferProgress {

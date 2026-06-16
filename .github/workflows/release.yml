@@ -5,206 +5,85 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
-  build-macos:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-darwin, x86_64-apple-darwin
-
-      - name: Build Rust static libraries
-        run: |
-          cargo build --release -p justdrop-ffi --target aarch64-apple-darwin
-          cargo build --release -p justdrop-ffi --target x86_64-apple-darwin
-
-      - name: Build macOS .app bundle
-        run: |
-          APP_DIR="JustDrop.app/Contents"
-          mkdir -p "$APP_DIR/MacOS"
-          mkdir -p "$APP_DIR/Resources"
-
-          # Copy Info.plist
-          cp platform/macos/JustDrop/Info.plist "$APP_DIR/"
-
-          # Compile Swift for arm64
-          swiftc platform/macos/JustDrop/Sources/*.swift \
-            platform/macos/JustDrop/Sources/SwiftUI/*.swift \
-            platform/macos/JustDrop/Sources/Bluetooth/*.swift \
-            platform/macos/JustDrop/Sources/Network/*.swift \
-            target/aarch64-apple-darwin/release/libjustdrop_ffi.a \
-            -o "$APP_DIR/MacOS/JustDrop-arm64" \
-            -target arm64-apple-macosx13.0 \
-            -sdk "$(xcrun --show-sdk-path)" \
-            -framework Cocoa \
-            -framework SwiftUI \
-            -framework CoreBluetooth \
-            -framework CoreWLAN \
-            -framework UserNotifications
-
-          # Compile Swift for x86_64
-          swiftc platform/macos/JustDrop/Sources/*.swift \
-            platform/macos/JustDrop/Sources/SwiftUI/*.swift \
-            platform/macos/JustDrop/Sources/Bluetooth/*.swift \
-            platform/macos/JustDrop/Sources/Network/*.swift \
-            target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
-            -o "$APP_DIR/MacOS/JustDrop-x86_64" \
-            -target x86_64-apple-macosx13.0 \
-            -sdk "$(xcrun --show-sdk-path)" \
-            -framework Cocoa \
-            -framework SwiftUI \
-            -framework CoreBluetooth \
-            -framework CoreWLAN \
-            -framework UserNotifications
-
-          # Universal binary
-          lipo -create -output "$APP_DIR/MacOS/JustDrop" \
-            "$APP_DIR/MacOS/JustDrop-arm64" "$APP_DIR/MacOS/JustDrop-x86_64"
-          rm "$APP_DIR/MacOS/JustDrop-arm64" "$APP_DIR/MacOS/JustDrop-x86_64"
-
-          chmod +x "$APP_DIR/MacOS/JustDrop"
-
-          # Build Share Extension
-          SHARE_DIR="$APP_DIR/PlugIns/JustDropShare.appex/Contents"
-          mkdir -p "$SHARE_DIR/MacOS"
-          mkdir -p "$SHARE_DIR/Resources"
-
-          cp platform/macos/JustDropShare/Info.plist "$SHARE_DIR/"
-
-          swiftc platform/macos/JustDropShare/ShareViewController.swift \
-            platform/macos/JustDrop/Sources/JustBridge.swift \
-            target/aarch64-apple-darwin/release/libjustdrop_ffi.a \
-            -o "$SHARE_DIR/MacOS/JustDropShare-arm64" \
-            -target arm64-apple-macosx11.0 \
-            -sdk "$(xcrun --show-sdk-path)" \
-            -framework Cocoa \
-            -framework AppKit \
-            -Xlinker -e -Xlinker _NSExtensionMain
-
-          swiftc platform/macos/JustDropShare/ShareViewController.swift \
-            platform/macos/JustDrop/Sources/JustBridge.swift \
-            target/x86_64-apple-darwin/release/libjustdrop_ffi.a \
-            -o "$SHARE_DIR/MacOS/JustDropShare-x86_64" \
-            -target x86_64-apple-macosx11.0 \
-            -sdk "$(xcrun --show-sdk-path)" \
-            -framework Cocoa \
-            -framework AppKit \
-            -Xlinker -e -Xlinker _NSExtensionMain
-
-          lipo -create -output "$SHARE_DIR/MacOS/JustDropShare" \
-            "$SHARE_DIR/MacOS/JustDropShare-arm64" "$SHARE_DIR/MacOS/JustDropShare-x86_64"
-          rm "$SHARE_DIR/MacOS/JustDropShare-arm64" "$SHARE_DIR/MacOS/JustDropShare-x86_64"
-          chmod +x "$SHARE_DIR/MacOS/JustDropShare"
-
-          codesign --force --sign - --entitlements platform/macos/JustDropShare/JustDropShare.entitlements "$APP_DIR/PlugIns/JustDropShare.appex"
-
-      - name: Package macOS Zip
-        run: |
-          chmod +x install.sh uninstall.sh
-          zip -r JustDrop-macOS-${{ github.ref_name }}.zip JustDrop.app install.sh uninstall.sh
-          
-      - name: Upload macOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: macos-release
-          path: JustDrop-macOS-${{ github.ref_name }}.zip
-
   build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Java
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: temurin
+          java-version: 17
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-linux-android, armv7-linux-androideabi, i686-linux-android, x86_64-linux-android
-
-      - name: Install cargo-ndk
-        run: cargo install cargo-ndk
-
-      - name: Build Rust JNI Libraries
-        run: |
-          mkdir -p platform/android/app/src/main/jniLibs
-          cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 -o ./platform/android/app/src/main/jniLibs build --release -p justdrop-ffi
-
-      - name: Build Android APK
+      - name: Build Release APK
         working-directory: platform/android
-        run: |
-          chmod +x gradlew
-          ./gradlew assembleRelease
+        run: ./gradlew assembleRelease --no-daemon
 
-      - name: Rename Android APK
-        run: |
-          cp platform/android/app/build/outputs/apk/release/app-release.apk JustDrop-Android-${{ github.ref_name }}.apk
-
-      - name: Upload Android APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-release
-          path: JustDrop-Android-${{ github.ref_name }}.apk
+          name: justdrop-android
+          path: platform/android/app/build/outputs/apk/release/*.apk
 
-  publish:
-    needs: [build-macos, build-android]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
+  build-macos:
+    name: Build macOS Binary
+    runs-on: macos-14
     steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Build Release
+        run: cargo build --release --target aarch64-apple-darwin
+
+      - name: Package macOS ZIP
+        run: |
+          mkdir -p dist
+          cp target/aarch64-apple-darwin/release/justdrop dist/ 2>/dev/null || true
+          cp install.sh uninstall.sh README.md LICENSE dist/ 2>/dev/null || true
+          cd dist && zip -r ../JustDrop-macOS-arm64.zip .
+
+      - name: Upload ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: justdrop-macos
+          path: JustDrop-macOS-arm64.zip
+
+  release:
+    name: Create GitHub Release
+    needs: [build-android, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
       - uses: actions/download-artifact@v4
         with:
-          name: macos-release
-          
+          name: justdrop-android
+          path: artifacts/android
+
       - uses: actions/download-artifact@v4
         with:
-          name: android-release
+          name: justdrop-macos
+          path: artifacts/macos
+
+      - name: Rename APK
+        run: |
+          APK=$(find artifacts/android -name "*.apk" | head -1)
+          if [ -n "$APK" ]; then
+            cp "$APK" artifacts/JustDrop-android.apk
+          fi
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
-          name: JustDrop ${{ github.ref_name }}
-          body: |
-            ### JustDrop ${{ github.ref_name }}
-            
-            #### macOS Installation
-            1. Download `JustDrop-macOS-${{ github.ref_name }}.zip` and unzip it
-            2. Run `./install.sh` — this copies **JustDrop.app** to `/Applications` and starts it
-            3. Look for the ↔ icon in your **menu bar** (top-right, near Wi-Fi)
-            4. If macOS blocks it: **System Settings → Privacy & Security → Open Anyway**
-            
-            #### Android Installation
-            1. Download `JustDrop-Android-${{ github.ref_name }}.apk` and install it
-            2. Pull down the notification shade and add the **JustDrop** Quick Settings tile
-            3. Use the native **Share** button in any app to send files to nearby devices
-            
-            #### Features
-            - **Menu Bar Toggle (macOS)** — turn sharing on/off with one click
-            - **Quick Settings Tile (Android)** — toggle from notification shade
-            - **Accept / Reject popups** for incoming transfers
-            - **Progress notifications** with speed indicator
-            - **Completion alerts** showing where files were saved
-            - Files saved to `~/JustDrop` (macOS) or `/sdcard/JustDrop` (Android)
-            
-            #### v2.0 Changes
-            - QUIC transport (replaces TCP)
-            - Ed25519 identity + ChaCha20 encryption
-            - BLAKE3 hashing + Zstd compression
-            - BLE discovery support (CoreBluetooth / Android BLE)
-            - SwiftUI menu bar (macOS 13+)
-            - Jetpack Compose Material 3 (Android)
-            - UniFFI generated bindings
+          generate_release_notes: true
           files: |
-            *.zip
-            *.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            artifacts/JustDrop-android.apk
+            artifacts/macos/JustDrop-macOS-arm64.zip
