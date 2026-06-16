@@ -20,8 +20,10 @@ class EngineViewModel: ObservableObject {
     private var pollTimer: Timer?
 
     init() {
-        // Auto-start
+        // Note: didSet is NOT called during init in Swift,
+        // so we must call start() explicitly here.
         isRunning = true
+        start()
     }
 
     func start() {

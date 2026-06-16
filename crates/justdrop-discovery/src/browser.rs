@@ -29,6 +29,9 @@ pub struct ServiceBrowser {
     service_type: String,
     peers: Arc<RwLock<HashMap<String, DeviceInfo>>>,
     event_tx: broadcast::Sender<PeerEvent>,
+    /// Our own peer ID prefix (first 8 bytes of fingerprint, hex-encoded).
+    /// Used to filter out self-discovery.
+    self_id: Arc<RwLock<Option<String>>>,
 }
 
 impl ServiceBrowser {
@@ -41,8 +44,15 @@ impl ServiceBrowser {
             service_type: service_type.to_string(),
             peers: Arc::new(RwLock::new(HashMap::new())),
             event_tx,
+            self_id: Arc::new(RwLock::new(None)),
         };
         (browser, event_rx)
+    }
+
+    /// Set our own fingerprint so we can filter self-discovery.
+    pub fn set_self_fingerprint(&self, fingerprint: &[u8]) {
+        let id = super::registrar::hex_encode(&fingerprint[..8]);
+        *self.self_id.write() = Some(id);
     }
 
     /// Subscribe to peer events (additional receivers).
@@ -72,6 +82,7 @@ impl ServiceBrowser {
         let peers = Arc::clone(&self.peers);
         let event_tx = self.event_tx.clone();
         let service_type = self.service_type.clone();
+        let self_id = Arc::clone(&self.self_id);
 
         // Spawn a blocking task to process mDNS events (mdns-sd uses flume channels, not async)
         tokio::task::spawn_blocking(move || {
@@ -79,7 +90,7 @@ impl ServiceBrowser {
             loop {
                 match receiver.recv() {
                     Ok(event) => {
-                        Self::handle_event(&peers, &event_tx, event);
+                        Self::handle_event(&peers, &event_tx, event, &self_id);
                     }
                     Err(_) => {
                         debug!("mDNS browse channel closed, stopping browser");
@@ -97,6 +108,7 @@ impl ServiceBrowser {
         peers: &Arc<RwLock<HashMap<String, DeviceInfo>>>,
         event_tx: &broadcast::Sender<PeerEvent>,
         event: ServiceEvent,
+        self_id: &Arc<RwLock<Option<String>>>,
     ) {
         match event {
             ServiceEvent::ServiceResolved(info) => {
@@ -140,6 +152,14 @@ impl ServiceBrowser {
                     platform,
                     last_seen: chrono::Utc::now(),
                 };
+
+                // Filter out self-discovery
+                if let Some(ref our_id) = *self_id.read() {
+                    if device_info.id == *our_id {
+                        debug!(peer_id = %device_info.id, "filtered self-discovery");
+                        return;
+                    }
+                }
 
                 let mut peers_lock = peers.write();
                 let event = if peers_lock.contains_key(&device_info.id) {

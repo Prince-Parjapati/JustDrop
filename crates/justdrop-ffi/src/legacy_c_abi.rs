@@ -147,6 +147,7 @@ pub unsafe extern "C" fn justdrop_init(data_dir_ptr: *const c_char) -> c_int {
 
     // Start mDNS browser
     let (browser, _peer_rx) = ServiceBrowser::new(&service_type);
+    browser.set_self_fingerprint(&fingerprint);
     if let Err(e) = runtime.block_on(async { browser.start_browsing(registrar.daemon()) }) {
         error!(error = %e, "failed to start mDNS browsing");
         return -6;
