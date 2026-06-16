@@ -3,6 +3,8 @@
 //! This crate generates Swift and Kotlin bindings via UniFFI.
 //! All types and the engine interface are defined in `justdrop.udl`.
 
+#![allow(clippy::empty_line_after_doc_comments)]
+
 uniffi::include_scaffolding!("justdrop");
 
 use justdrop_core::config::Config;

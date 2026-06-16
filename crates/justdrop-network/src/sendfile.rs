@@ -70,7 +70,7 @@ async fn sendfile_linux(
     let file_fd = file.as_raw_fd();
 
     let mut total_sent: u64 = 0;
-    let mut file_offset = offset as i64;
+    let mut file_offset: u64 = offset;
 
     // sendfile in a blocking context since it's a syscall
     let result = tokio::task::spawn_blocking(move || {
@@ -82,7 +82,6 @@ async fn sendfile_linux(
             match rustix_sendfile(socket_fd, file_fd, Some(&mut file_offset), chunk) {
                 Ok(n) if n > 0 => {
                     total_sent += n as u64;
-                    trace!(bytes = n, total = total_sent, "sendfile chunk");
                 }
                 Ok(_) => break, // EOF
                 Err(e) => {
@@ -156,9 +155,6 @@ async fn sendfile_macos(
                     total_sent += len as u64;
                     current_offset += len;
                     continue;
-                }
-                if len > 0 {
-                    total_sent += len as u64;
                 }
                 return Err(err);
             }

@@ -182,19 +182,6 @@ mod tests {
     use std::collections::VecDeque;
     use std::sync::{Arc, Mutex};
 
-    /// In-memory channel for testing handshakes without real I/O.
-    struct TestChannel {
-        queue: Arc<Mutex<VecDeque<Vec<u8>>>>,
-    }
-
-    impl TestChannel {
-        fn new() -> (Self, Self) {
-            let q1 = Arc::new(Mutex::new(VecDeque::new()));
-            let q2 = Arc::new(Mutex::new(VecDeque::new()));
-            (Self { queue: q1.clone() }, Self { queue: q2.clone() })
-        }
-    }
-
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn noise_xx_handshake_roundtrip() {
         let tmp = std::env::temp_dir().join("justdrop_hs_test");
