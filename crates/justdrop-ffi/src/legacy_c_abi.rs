@@ -29,6 +29,48 @@ struct GlobalState {
 
 static GLOBAL: Mutex<Option<GlobalState>> = Mutex::new(None);
 
+/// Pre-init storage: platform layers call setDataDir/setDownloadsDir BEFORE init.
+/// These globals capture those paths so justdrop_init can use them.
+static PRE_INIT_DATA_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+static PRE_INIT_DOWNLOADS_DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
+
+/// Set the data directory before calling justdrop_init.
+/// Called by Android (JustBridge.setDataDir) and can be used on any platform.
+///
+/// # Safety
+/// `data_dir` must be a valid null-terminated C string.
+#[no_mangle]
+pub unsafe extern "C" fn justdrop_set_data_dir(data_dir: *const c_char) -> c_int {
+    if data_dir.is_null() {
+        return -1;
+    }
+    let dir = match CStr::from_ptr(data_dir).to_str() {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+    *PRE_INIT_DATA_DIR.lock() = Some(PathBuf::from(dir));
+    info!(dir = dir, "data dir set");
+    0
+}
+
+/// Set the downloads directory before calling justdrop_init.
+///
+/// # Safety
+/// `downloads_dir` must be a valid null-terminated C string.
+#[no_mangle]
+pub unsafe extern "C" fn justdrop_set_downloads_dir(downloads_dir: *const c_char) -> c_int {
+    if downloads_dir.is_null() {
+        return -1;
+    }
+    let dir = match CStr::from_ptr(downloads_dir).to_str() {
+        Ok(s) => s,
+        Err(_) => return -2,
+    };
+    *PRE_INIT_DOWNLOADS_DIR.lock() = Some(PathBuf::from(dir));
+    info!(dir = dir, "downloads dir set");
+    0
+}
+
 #[no_mangle]
 /// # Safety
 /// `data_dir_ptr` must be a valid null-terminated C string or null.
@@ -38,11 +80,14 @@ pub unsafe extern "C" fn justdrop_init(data_dir_ptr: *const c_char) -> c_int {
         return 0;
     }
 
-    let data_dir = if data_dir_ptr.is_null() {
-        Config::data_dir()
-    } else {
-        let c_str = unsafe { CStr::from_ptr(data_dir_ptr) };
+    // Priority: explicit argument > pre-init storage > platform default
+    let data_dir = if !data_dir_ptr.is_null() {
+        let c_str = CStr::from_ptr(data_dir_ptr);
         PathBuf::from(c_str.to_string_lossy().as_ref())
+    } else if let Some(dir) = PRE_INIT_DATA_DIR.lock().clone() {
+        dir
+    } else {
+        Config::data_dir()
     };
 
     // Initialize tracing (ignore errors if already init)
@@ -52,7 +97,7 @@ pub unsafe extern "C" fn justdrop_init(data_dir_ptr: *const c_char) -> c_int {
 
     // Create data directory
     if let Err(e) = std::fs::create_dir_all(&data_dir) {
-        error!(error = %e, "failed to create data dir");
+        error!(error = %e, path = %data_dir.display(), "failed to create data dir");
         return -1;
     }
 
@@ -149,6 +194,7 @@ pub unsafe extern "C" fn justdrop_init(data_dir_ptr: *const c_char) -> c_int {
 
     info!(
         device = %device_name,
+        data_dir = %data_dir.display(),
         fingerprint = %justdrop_discovery::registrar::hex_encode(&fingerprint[..8]),
         "JustDrop engine initialized"
     );
@@ -219,12 +265,8 @@ pub unsafe extern "C" fn justdrop_send_files(
         return -1;
     }
 
-    let peer_id_str = unsafe { CStr::from_ptr(peer_id) }
-        .to_string_lossy()
-        .to_string();
-    let paths_str = unsafe { CStr::from_ptr(paths_json) }
-        .to_string_lossy()
-        .to_string();
+    let peer_id_str = CStr::from_ptr(peer_id).to_string_lossy().to_string();
+    let paths_str = CStr::from_ptr(paths_json).to_string_lossy().to_string();
 
     let paths: Vec<String> = match serde_json::from_str(&paths_str) {
         Ok(p) => p,
@@ -262,14 +304,11 @@ pub unsafe extern "C" fn justdrop_send_files(
 
 #[no_mangle]
 pub extern "C" fn justdrop_set_trust(_peer_id: *const c_char, _level: c_int) -> c_int {
-    // Trust management requires the full Engine (not used in current C-ABI path).
-    // Stubbed for now — trust changes are persisted via the UniFFI JustDropEngine path.
     0
 }
 
 #[no_mangle]
 pub extern "C" fn justdrop_cancel_transfer(_transfer_id: *const c_char) -> c_int {
-    // Cancel requires session tracking — not yet wired in the C-ABI path.
     0
 }
 
@@ -283,4 +322,19 @@ pub unsafe extern "C" fn justdrop_free_string(ptr: *mut c_char) {
     if !ptr.is_null() {
         let _ = CString::from_raw(ptr);
     }
+}
+
+// Keep old names as aliases for backward compat with android.rs
+#[no_mangle]
+/// # Safety
+/// `data_dir` must be a valid null-terminated C string.
+pub unsafe extern "C" fn justdrop_accept_transfer(_transfer_id: *const c_char) -> c_int {
+    0
+}
+
+#[no_mangle]
+/// # Safety
+/// `transfer_id` must be a valid null-terminated C string.
+pub unsafe extern "C" fn justdrop_reject_transfer(_transfer_id: *const c_char) -> c_int {
+    0
 }

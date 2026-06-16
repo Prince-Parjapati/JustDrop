@@ -28,7 +28,7 @@ class EngineViewModel: ObservableObject {
         let dataDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first?.appendingPathComponent("com.justdrop").path ?? ""
 
-        let result = justdrop_init(dataDir)
+        let result = dataDir.withCString { justdrop_init($0) }
         if result == 0 {
             justdrop_start_discovery()
             startPolling()
@@ -56,11 +56,11 @@ class EngineViewModel: ObservableObject {
     }
 
     func cancelTransfer(id: String) {
-        justdrop_cancel_transfer(id)
+        id.withCString { justdrop_cancel_transfer($0) }
     }
 
     func setTrust(_ deviceId: String, level: TrustLevelModel) {
-        justdrop_set_trust(deviceId, level.rawValue)
+        deviceId.withCString { justdrop_set_trust($0, level.rawValue) }
     }
 
     // MARK: - Private
@@ -79,6 +79,7 @@ class EngineViewModel: ObservableObject {
     private func refreshPeers() {
         guard let json = justdrop_get_peers() else { return }
         let str = String(cString: json)
+        justdrop_free_string(json)
         guard let data = str.data(using: .utf8),
               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
 
@@ -102,16 +103,20 @@ class EngineViewModel: ObservableObject {
     private func initiateTransfer(peerId: String, paths: [String]) {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: paths),
               let jsonStr = String(data: jsonData, encoding: .utf8) else { return }
-        justdrop_send_files(peerId, jsonStr)
+        peerId.withCString { peerPtr in
+            jsonStr.withCString { pathsPtr in
+                justdrop_send_files(peerPtr, pathsPtr)
+            }
+        }
     }
 }
 
 // MARK: - FFI Declarations
 
 // These map to the C-ABI functions exported by justdrop-ffi.
-// Will be replaced by UniFFI-generated bindings when migration completes.
+// @_silgen_name does NOT auto-bridge types — must use raw C types.
 @_silgen_name("justdrop_init")
-func justdrop_init(_ dataDir: String) -> Int32
+func justdrop_init(_ dataDir: UnsafePointer<CChar>?) -> Int32
 
 @_silgen_name("justdrop_shutdown")
 func justdrop_shutdown() -> Int32
@@ -120,16 +125,19 @@ func justdrop_shutdown() -> Int32
 func justdrop_start_discovery() -> Int32
 
 @_silgen_name("justdrop_get_peers")
-func justdrop_get_peers() -> UnsafePointer<CChar>?
+func justdrop_get_peers() -> UnsafeMutablePointer<CChar>?
 
 @_silgen_name("justdrop_send_files")
-func justdrop_send_files(_ peerId: String, _ pathsJson: String) -> Int32
+func justdrop_send_files(_ peerId: UnsafePointer<CChar>?, _ pathsJson: UnsafePointer<CChar>?) -> Int32
 
 @_silgen_name("justdrop_cancel_transfer")
-func justdrop_cancel_transfer(_ transferId: String) -> Int32
+func justdrop_cancel_transfer(_ transferId: UnsafePointer<CChar>?) -> Int32
 
 @_silgen_name("justdrop_set_trust")
-func justdrop_set_trust(_ deviceId: String, _ level: Int32) -> Int32
+func justdrop_set_trust(_ deviceId: UnsafePointer<CChar>?, _ level: Int32) -> Int32
+
+@_silgen_name("justdrop_free_string")
+func justdrop_free_string(_ ptr: UnsafeMutablePointer<CChar>?)
 
 // MARK: - Models
 
