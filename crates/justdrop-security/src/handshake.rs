@@ -184,7 +184,14 @@ mod tests {
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn noise_xx_handshake_roundtrip() {
-        let tmp = std::env::temp_dir().join("justdrop_hs_test");
+        let tmp = std::env::temp_dir().join(format!(
+            "justdrop_hs_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
         let _ = std::fs::remove_dir_all(&tmp);
 
         let dir_i = tmp.join("initiator");

@@ -95,7 +95,7 @@ async fn sendfile_linux(
         })
     })
     .await
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))??;
+    .map_err(std::io::Error::other)??;
 
     debug!(
         bytes = result.bytes_sent,

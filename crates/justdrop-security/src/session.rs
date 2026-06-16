@@ -71,7 +71,14 @@ mod tests {
 
     /// Helper to perform a handshake and return both sessions.
     async fn create_session_pair() -> (NoiseSession, NoiseSession) {
-        let tmp = std::env::temp_dir().join("justdrop_session_test");
+        let tmp = std::env::temp_dir().join(format!(
+            "justdrop_session_test_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
         let _ = std::fs::remove_dir_all(&tmp);
 
         let dir_i = tmp.join("initiator");
