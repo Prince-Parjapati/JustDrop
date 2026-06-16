@@ -41,14 +41,11 @@ jobs:
           targets: aarch64-apple-darwin
 
       - name: Build Release
-        run: cargo build --release --target aarch64-apple-darwin
-
-      - name: Package macOS ZIP
         run: |
-          mkdir -p dist
-          cp target/aarch64-apple-darwin/release/justdrop dist/ 2>/dev/null || true
-          cp install.sh uninstall.sh README.md LICENSE dist/ 2>/dev/null || true
-          cd dist && zip -r ../JustDrop-macOS-arm64.zip .
+          cd platform/macos
+          ./build.sh
+          cd build
+          zip -r ../../../JustDrop-macOS-arm64.zip JustDrop.app
 
       - name: Upload ZIP
         uses: actions/upload-artifact@v4
