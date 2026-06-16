@@ -18,6 +18,7 @@ class BleGattServer(
         val SERVICE_UUID: UUID = BleAdvertiser.SERVICE_UUID
         val HANDSHAKE_CHAR_UUID: UUID = UUID.fromString("7D2D7A14-E85E-4B4F-B517-2B4C7D3F1A01")
         val RESPONSE_CHAR_UUID: UUID = UUID.fromString("7D2D7A14-E85E-4B4F-B517-2B4C7D3F1A02")
+        val HOTSPOT_CRED_CHAR_UUID: UUID = UUID.fromString("7A5D3E2F-1B4C-4D8E-9F6A-0E3C5B7D9A32")
     }
 
     interface Listener {
@@ -146,12 +147,43 @@ class BleGattServer(
         service.addCharacteristic(handshakeChar)
         service.addCharacteristic(responseChar)
 
+        // Hotspot credential characteristic — written by this device after creating hotspot
+        val hotspotCredChar =
+            BluetoothGattCharacteristic(
+                HOTSPOT_CRED_CHAR_UUID,
+                BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_READ,
+            )
+        service.addCharacteristic(hotspotCredChar)
+
         try {
             gattServer?.addService(service)
         } catch (e: SecurityException) {
             Log.e(TAG, "Add service failed", e)
         }
         Log.i(TAG, "GATT server started")
+    }
+
+    /**
+     * Send hotspot credentials to a connected peer over BLE GATT.
+     * Called after LocalOnlyHotspot is created.
+     */
+    fun sendHotspotCredentials(deviceAddress: String, ssid: String, passphrase: String, serverIp: String, port: Int) {
+        val service = gattServer?.getService(SERVICE_UUID) ?: return
+        val hotspotChar = service.getCharacteristic(HOTSPOT_CRED_CHAR_UUID) ?: return
+
+        // Encode credentials as JSON (simple, fits in GATT)
+        val json = """{"ssid":"$ssid","passphrase":"$passphrase","server_ip":"$serverIp","port":$port}"""
+        hotspotChar.value = json.toByteArray(Charsets.UTF_8)
+
+        val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager ?: return
+        val device = btManager.adapter.getRemoteDevice(deviceAddress)
+        try {
+            gattServer?.notifyCharacteristicChanged(device, hotspotChar, false)
+            Log.i(TAG, "Sent hotspot credentials to $deviceAddress: $ssid")
+        } catch (e: SecurityException) {
+            Log.e(TAG, "Send hotspot creds failed", e)
+        }
     }
 
     fun stop() {

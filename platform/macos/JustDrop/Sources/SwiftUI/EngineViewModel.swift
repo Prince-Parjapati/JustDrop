@@ -1,5 +1,6 @@
 import SwiftUI
 import Combine
+import CoreBluetooth
 
 /// View models and data models for the macOS SwiftUI layer.
 
@@ -19,6 +20,11 @@ class EngineViewModel: ObservableObject {
 
     private var pollTimer: Timer?
 
+    // BLE components
+    private var bleCentral: BleCentral?
+    private var blePeripheral: BlePeripheral?
+    private var blePeers: [String: PeerModel] = [:] // keyed by BLE address
+
     init() {
         // Note: didSet is NOT called during init in Swift,
         // so we must call start() explicitly here.
@@ -33,12 +39,14 @@ class EngineViewModel: ObservableObject {
         let result = dataDir.withCString { justdrop_init($0) }
         if result == 0 {
             justdrop_start_discovery()
+            startBle()
             startPolling()
         }
     }
 
     func stop() {
         stopPolling()
+        stopBle()
         justdrop_shutdown()
         peers = []
     }
@@ -52,7 +60,6 @@ class EngineViewModel: ObservableObject {
         panel.begin { response in
             guard response == .OK else { return }
             let paths = panel.urls.map { $0.path }
-            // Call Rust FFI to initiate transfer
             self.initiateTransfer(peerId: peerId, paths: paths)
         }
     }
@@ -65,7 +72,93 @@ class EngineViewModel: ObservableObject {
         deviceId.withCString { justdrop_set_trust($0, level.rawValue) }
     }
 
-    // MARK: - Private
+    // MARK: - BLE
+
+    private func startBle() {
+        // Start BLE central (scanner)
+        let central = BleCentral()
+        central.onDeviceFound = { [weak self] address, rssi, serviceData in
+            self?.handleBleDeviceFound(address: address, rssi: rssi, serviceData: serviceData)
+        }
+        central.onDeviceLost = { [weak self] address in
+            self?.handleBleDeviceLost(address: address)
+        }
+        central.startScanning()
+        bleCentral = central
+
+        // Start BLE peripheral (advertiser)
+        let peripheral = BlePeripheral()
+        // Create advertisement payload with device info
+        // The payload is parsed by the BLE scanner on the other device
+        let deviceName = ProcessInfo.processInfo.hostName
+        var payload = Data()
+        payload.append(contentsOf: [0x4A, 0x44]) // "JD" magic bytes
+        payload.append(0x01) // protocol version
+        payload.append(0x01) // platform: macOS
+        // Append truncated device name (max 20 bytes)
+        let nameData = Data(deviceName.prefix(20).utf8)
+        payload.append(UInt8(nameData.count))
+        payload.append(nameData)
+        peripheral.startAdvertising(payload: payload)
+        blePeripheral = peripheral
+    }
+
+    private func stopBle() {
+        bleCentral?.stopScanning()
+        bleCentral = nil
+        blePeripheral?.stopAdvertising()
+        blePeripheral = nil
+        blePeers.removeAll()
+    }
+
+    private func handleBleDeviceFound(address: String, rssi: Int, serviceData: Data?) {
+        var name = "Unknown Device"
+        var platform = "Unknown"
+
+        // Parse JustDrop advertisement payload
+        if let data = serviceData, data.count >= 4,
+           data[0] == 0x4A, data[1] == 0x44 { // "JD" magic
+            // data[2] = protocol version
+            let platformByte = data[3]
+            switch platformByte {
+            case 0x01: platform = "MacOS"
+            case 0x02: platform = "Android"
+            case 0x03: platform = "Windows"
+            case 0x04: platform = "Linux"
+            default: break
+            }
+
+            // Parse device name
+            if data.count > 4 {
+                let nameLen = Int(data[4])
+                if data.count >= 5 + nameLen {
+                    name = String(data: data[5..<(5 + nameLen)], encoding: .utf8) ?? name
+                }
+            }
+        }
+
+        let peer = PeerModel(
+            id: "ble-\(address)",
+            name: name,
+            platform: platform,
+            address: "BLE",
+            presence: .available,
+            trust: .unknown,
+            rssi: rssi
+        )
+
+        DispatchQueue.main.async {
+            self.blePeers[address] = peer
+        }
+    }
+
+    private func handleBleDeviceLost(address: String) {
+        DispatchQueue.main.async {
+            self.blePeers.removeValue(forKey: address)
+        }
+    }
+
+    // MARK: - Polling
 
     private func startPolling() {
         pollTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
@@ -79,26 +172,35 @@ class EngineViewModel: ObservableObject {
     }
 
     private func refreshPeers() {
-        guard let json = justdrop_get_peers() else { return }
-        let str = String(cString: json)
-        justdrop_free_string(json)
-        guard let data = str.data(using: .utf8),
-              let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
+        // Get mDNS peers from Rust
+        var mdnsPeers: [PeerModel] = []
+        if let json = justdrop_get_peers() {
+            let str = String(cString: json)
+            justdrop_free_string(json)
+            if let data = str.data(using: .utf8),
+               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
+                mdnsPeers = arr.compactMap { dict in
+                    guard let id = dict["id"] as? String,
+                          let name = dict["name"] as? String else { return nil }
+                    return PeerModel(
+                        id: id,
+                        name: name,
+                        platform: dict["platform"] as? String ?? "Unknown",
+                        address: dict["addr"] as? String,
+                        presence: .available,
+                        trust: .unknown,
+                        rssi: dict["rssi"] as? Int
+                    )
+                }
+            }
+        }
+
+        // Merge BLE peers with mDNS peers (deduplicate by name)
+        let mdnsNames = Set(mdnsPeers.map { $0.name })
+        let uniqueBlePeers = blePeers.values.filter { !mdnsNames.contains($0.name) }
 
         DispatchQueue.main.async {
-            self.peers = arr.compactMap { dict in
-                guard let id = dict["id"] as? String,
-                      let name = dict["name"] as? String else { return nil }
-                return PeerModel(
-                    id: id,
-                    name: name,
-                    platform: dict["platform"] as? String ?? "Unknown",
-                    address: dict["addr"] as? String,
-                    presence: .available,
-                    trust: .unknown,
-                    rssi: dict["rssi"] as? Int
-                )
-            }
+            self.peers = mdnsPeers + uniqueBlePeers
         }
     }
 
@@ -185,6 +287,11 @@ struct PeerModel: Identifiable {
         var parts = [platform]
         if let addr = address { parts.append(addr) }
         return parts.joined(separator: " • ")
+    }
+
+    var discoveryMethod: String {
+        if id.hasPrefix("ble-") { return "BLE" }
+        return "Wi-Fi"
     }
 }
 

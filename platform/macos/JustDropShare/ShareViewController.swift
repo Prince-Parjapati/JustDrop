@@ -1,12 +1,43 @@
 import Cocoa
 import SwiftUI
 
+// MARK: - FFI Declarations (same as main app, needed because extension runs in separate process)
+
+@_silgen_name("justdrop_init")
+func justdrop_init(_ dataDir: UnsafePointer<CChar>?) -> Int32
+
+@_silgen_name("justdrop_shutdown")
+func justdrop_shutdown() -> Int32
+
+@_silgen_name("justdrop_start_discovery")
+func justdrop_start_discovery() -> Int32
+
+@_silgen_name("justdrop_get_peers")
+func justdrop_get_peers() -> UnsafeMutablePointer<CChar>?
+
+@_silgen_name("justdrop_send_files")
+func justdrop_send_files(_ peerId: UnsafePointer<CChar>?, _ pathsJson: UnsafePointer<CChar>?) -> Int32
+
+@_silgen_name("justdrop_free_string")
+func justdrop_free_string(_ ptr: UnsafeMutablePointer<CChar>?)
+
 /// Share Extension for macOS — receives files from Finder's Share menu.
 class ShareViewController: NSViewController {
 
     override var nibName: NSNib.Name? { nil }
 
+    private var engineStarted = false
+
     override func loadView() {
+        // Start engine in the extension process
+        if !engineStarted {
+            let dataDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
+                .first?.appendingPathComponent("com.justdrop").path ?? ""
+            dataDir.withCString { justdrop_init($0) }
+            justdrop_start_discovery()
+            engineStarted = true
+        }
+
         let hostView = NSHostingView(rootView: ShareExtensionView(
             onSend: { [weak self] peerId in
                 self?.sendFiles(to: peerId)
@@ -17,6 +48,14 @@ class ShareViewController: NSViewController {
         ))
         hostView.frame = NSRect(x: 0, y: 0, width: 360, height: 400)
         self.view = hostView
+    }
+
+    override func viewDidDisappear() {
+        super.viewDidDisappear()
+        if engineStarted {
+            justdrop_shutdown()
+            engineStarted = false
+        }
     }
 
     private func sendFiles(to peerId: String) {
@@ -32,7 +71,7 @@ class ShareViewController: NSViewController {
             for attachment in item.attachments ?? [] {
                 if attachment.hasItemConformingToTypeIdentifier("public.file-url") {
                     group.enter()
-                    attachment.loadItem(forTypeIdentifier: "public.file-url", options: nil) { url, error in
+                    attachment.loadItem(forTypeIdentifier: "public.file-url", options: nil) { url, _ in
                         if let fileURL = url as? URL {
                             filePaths.append(fileURL.path)
                         }
@@ -44,10 +83,13 @@ class ShareViewController: NSViewController {
 
         group.notify(queue: .main) { [weak self] in
             if !filePaths.isEmpty {
-                // Encode and send via FFI
                 if let jsonData = try? JSONSerialization.data(withJSONObject: filePaths),
                    let jsonStr = String(data: jsonData, encoding: .utf8) {
-                    justdrop_send_files(peerId, jsonStr)
+                    peerId.withCString { peerPtr in
+                        jsonStr.withCString { pathsPtr in
+                            justdrop_send_files(peerPtr, pathsPtr)
+                        }
+                    }
                 }
             }
             self?.extensionContext?.completeRequest(returningItems: nil)
@@ -70,8 +112,13 @@ struct ShareExtensionView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("Send with JustDrop")
-                .font(.headline)
+            HStack {
+                Image(systemName: "arrow.up.arrow.down.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.accentColor)
+                Text("Send with JustDrop")
+                    .font(.headline)
+            }
 
             if peers.isEmpty {
                 VStack(spacing: 8) {
@@ -88,6 +135,10 @@ struct ShareExtensionView: View {
                     } label: {
                         HStack {
                             Image(systemName: peer.icon)
+                                .font(.title3)
+                                .frame(width: 32, height: 32)
+                                .background(.quaternary)
+                                .clipShape(Circle())
                             VStack(alignment: .leading) {
                                 Text(peer.name).fontWeight(.medium)
                                 Text(peer.platform)
@@ -95,8 +146,8 @@ struct ShareExtensionView: View {
                                     .foregroundColor(.secondary)
                             }
                             Spacer()
-                            Image(systemName: "chevron.right")
-                                .foregroundColor(.secondary)
+                            Image(systemName: "paperplane.fill")
+                                .foregroundColor(.accentColor)
                         }
                     }
                     .buttonStyle(.plain)
@@ -116,6 +167,7 @@ struct ShareExtensionView: View {
     private func refreshPeers() {
         guard let json = justdrop_get_peers() else { return }
         let str = String(cString: json)
+        justdrop_free_string(json)
         guard let data = str.data(using: .utf8),
               let arr = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else { return }
 
